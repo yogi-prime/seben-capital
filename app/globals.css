@@ -1,26 +1,333 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Seben Capital Design System - Premium Trading Platform
+All colors MUST be HSL. Copper gradients inspired by bull-shaped logo.
+*/
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Primary Brand Colors */
+    --background: 222 12% 9%;           /* #1A1B1F Deep charcoal */
+    --background-secondary: 222 14% 6%; /* #0E0F12 Deeper black */
+    --foreground: 210 11% 96%;          /* #F4F4F6 Soft white */
+    
+    /* Copper Gradient System */
+    --copper-primary: 28 52% 51%;       /* #C67B40 Rich copper */
+    --copper-secondary: 36 65% 70%;     /* #E3B17A Warm copper light */
+    --copper-accent: 32 58% 60%;        /* Blend for interactions */
+    
+    /* Card System */
+    --card: 222 12% 12%;                /* Elevated surface */
+    --card-foreground: 210 11% 96%;
+    --card-secondary: 222 12% 8%;       /* Lower elevation */
+    
+    /* Interactive Elements */
+    --primary: 28 52% 51%;              /* Copper primary */
+    --primary-foreground: 222 12% 9%;   /* Dark text on copper */
+    --primary-hover: 36 65% 70%;        /* Lighter copper on hover */
+    
+    --secondary: 222 12% 15%;           /* Subtle gray */
+    --secondary-foreground: 210 11% 96%;
+    --secondary-hover: 222 12% 18%;
+    
+    --accent: 222 12% 20%;              /* Accent surfaces */
+    --accent-foreground: 210 11% 96%;
+    
+    /* Financial Colors */
+    --success: 142 76% 36%;             /* #2ECC71 Green for gains */
+    --success-foreground: 210 11% 96%;
+    --destructive: 348 83% 47%;         /* #E74C3C Red for losses */
+    --destructive-foreground: 210 11% 96%;
+    
+    /* Utility Colors */
+    --muted: 222 12% 25%;
+    --muted-foreground: 215 16% 47%;
+    --border: 222 12% 18%;
+    --input: 222 12% 15%;
+    --ring: 28 52% 51%;                 /* Copper focus ring */
+    
+    /* Design System Extensions */
+    --gradient-copper: linear-gradient(135deg, hsl(var(--copper-primary)), hsl(var(--copper-secondary)));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--background-secondary)));
+    --shadow-copper: 0 10px 30px -10px hsl(var(--copper-primary) / 0.3);
+    --shadow-elegant: 0 8px 32px -8px hsl(222 12% 4% / 0.4);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Typography Scale */
+    --font-heading: 'Cinzel', serif;
+    --font-body: 'Inter', sans-serif;
+    
+    /* Sidebar (if needed) */
+    --sidebar-background: 222 12% 8%;
+    --sidebar-foreground: 210 11% 96%;
+    --sidebar-primary: 28 52% 51%;
+    --sidebar-primary-foreground: 222 12% 9%;
+    --sidebar-accent: 222 12% 15%;
+    --sidebar-accent-foreground: 210 11% 96%;
+    --sidebar-border: 222 12% 18%;
+    --sidebar-ring: 28 52% 51%;
+    
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    /* Dark mode is default - maintain same values */
+    --background: 222 12% 9%;
+    --background-secondary: 222 14% 6%;
+    --foreground: 210 11% 96%;
+    
+    --copper-primary: 28 52% 51%;
+    --copper-secondary: 36 65% 70%;
+    --copper-accent: 32 58% 60%;
+    
+    --card: 222 12% 12%;
+    --card-foreground: 210 11% 96%;
+    --card-secondary: 222 12% 8%;
+    
+    --primary: 28 52% 51%;
+    --primary-foreground: 222 12% 9%;
+    --primary-hover: 36 65% 70%;
+    
+    --secondary: 222 12% 15%;
+    --secondary-foreground: 210 11% 96%;
+    --secondary-hover: 222 12% 18%;
+    
+    --accent: 222 12% 20%;
+    --accent-foreground: 210 11% 96%;
+    
+    --success: 142 76% 36%;
+    --success-foreground: 210 11% 96%;
+    --destructive: 348 83% 47%;
+    --destructive-foreground: 210 11% 96%;
+    
+    --muted: 222 12% 25%;
+    --muted-foreground: 215 16% 47%;
+    --border: 222 12% 18%;
+    --input: 222 12% 15%;
+    --ring: 28 52% 51%;
+    
+    --sidebar-background: 222 12% 8%;
+    --sidebar-foreground: 210 11% 96%;
+    --sidebar-primary: 28 52% 51%;
+    --sidebar-primary-foreground: 222 12% 9%;
+    --sidebar-accent: 222 12% 15%;
+    --sidebar-accent-foreground: 210 11% 96%;
+    --sidebar-border: 222 12% 18%;
+    --sidebar-ring: 28 52% 51%;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.025em;
+  }
+  
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-background;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--copper-primary));
+  }
+}
+
+@layer components {
+  
+  /* Copper gradient utilities */
+  .bg-gradient-copper {
+    background: var(--gradient-copper);
+  }
+  
+  .bg-gradient-subtle {
+    background: var(--gradient-subtle);
+  }
+  
+  /* Enhanced shadows */
+  .shadow-copper {
+    box-shadow: var(--shadow-copper);
+  }
+  
+  .shadow-elegant {
+    box-shadow: var(--shadow-elegant);
+  }
+  
+  /* Smooth transitions */
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+  
+  /* Interactive hover effects */
+  .hover-copper {
+    @apply transition-smooth;
+  }
+  
+  .hover-copper:hover {
+    background: hsl(var(--copper-primary) / 0.1);
+    box-shadow: var(--shadow-copper);
+  }
+  
+  /* Text effects */
+  .text-gradient-copper {
+    background: var(--gradient-copper);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Card variants */
+  .card-elevated {
+    @apply bg-card border border-border shadow-elegant;
+  }
+  
+  .card-secondary {
+    background: hsl(var(--card-secondary));
+    @apply border border-border;
+  }
+  
+  /* Financial number colors */
+  .text-gain {
+    color: hsl(var(--success));
+  }
+  
+  .text-loss {
+    color: hsl(var(--destructive));
+  }
+  
+  /* Premium button effects */
+  .btn-copper {
+    @apply bg-gradient-copper text-primary-foreground font-medium transition-smooth;
+    @apply hover:scale-105 hover:shadow-copper;
+  }
+  
+  .btn-outline-copper {
+    @apply border-2 border-copper-primary/50 text-copper-primary transition-smooth;
+    @apply hover:bg-copper-primary hover:text-primary-foreground hover:border-copper-primary;
+  }
+  
+  /* Animated elements */
+  @keyframes pulse-copper {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsl(var(--copper-primary) / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 10px hsl(var(--copper-primary) / 0);
+    }
+  }
+  
+  .animate-pulse-copper {
+    animation: pulse-copper 2s infinite;
+  }
+
+  /* Count-up animation */
+  @keyframes count-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-count-up {
+    animation: count-up 0.6s ease-out;
+  }
+  
+  /* Sparkline animation */
+  @keyframes sparkline {
+    0% {
+      stroke-dashoffset: 100;
+    }
+    100% {
+      stroke-dashoffset: 0;
+    }
+  }
+  
+  .animate-sparkline {
+    stroke-dasharray: 100;
+    animation: sparkline 2s ease-in-out infinite;
+  }
+}
+
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+html.route-loading body {
+  overflow: hidden; /* lock scroll under overlay */
+}
+/* kill accidental horizontal scroll everywhere */
+html, body { overflow-x: clip; }        /* modern browsers */
+@supports not (overflow-x: clip) {
+  html, body { overflow-x: hidden; }    /* fallback */
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin { animation: none !important; }
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
 }

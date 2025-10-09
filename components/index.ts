@@ -1,0 +1,11 @@
+export { default as Header } from './Header';
+export { default as Hero } from './Hero';
+export { default as ThreePillars } from './ThreePillars';
+export { default as CourseSpotlight } from './CourseSpotlight';
+export { default as Services } from './Services';
+export { default as PerformancePhilosophy } from './PerformancePhilosophy';
+export { default as ToolsSection } from './ToolsSection';
+export { default as BlogSection } from './BlogSection';
+export { default as CTASection } from './CTASection';
+export { default as Footer } from './Footer';
+export { default as Chatbot } from './Chatbot';
