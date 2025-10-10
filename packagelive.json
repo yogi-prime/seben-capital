@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "NODE_ENV=production next start -p ${PORT:-3000}"
+  },
+  "engines": {
+    "node": ">=18.18 <23"
+  }
+}

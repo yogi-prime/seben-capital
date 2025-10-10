@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import Head from "next/head";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -25,7 +25,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 
-const HERO_BG_URL = "portfolio-hero2.webp"; // <- put your Ideogram export here
+// const HERO_BG_URL = "portfolio-hero2.webp"; 
 
 const processSteps = [
   { number: 1, title: "Consultation & Risk Profiling", description: "Understanding your goals, investment horizon, and risk constraints" },
@@ -78,55 +78,11 @@ export default function PortfolioManagementClient() {
     setFormSubmitted(true);
   };
 
-  const pageTitle = "Portfolio Management | Seben Capital";
-  const pageDesc =
-    "Risk-aware portfolio management with disciplined execution, ≤5% drawdown policy, T+1 liquidity, and transparent reporting.";
 
-  const faqSchema = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: faqs.map((f) => ({
-      "@type": "Question",
-      name: f.question,
-      acceptedAnswer: { "@type": "Answer", text: f.answer },
-    })),
-  };
-
-  const serviceSchema = {
-    "@context": "https://schema.org",
-    "@type": ["Service", "FinancialService"],
-    name: "Portfolio Management",
-    description: "Risk-aware portfolio management with disciplined execution, ≤5% drawdown policy, T+1 liquidity, and transparent reporting.",
-    provider: { "@type": "Organization", name: "Seben Capital" },
-    areaServed: "IN",
-    serviceType: "Portfolio Management",
-    offers: {
-      "@type": "Offer",
-      priceSpecification: { "@type": "UnitPriceSpecification", priceCurrency: "INR", name: "Minimum Investment", price: "500000" },
-      availability: "https://schema.org/InStock",
-    },
-  };
 
   return (
     <div className="min-h-screen bg-background">
-      <Head>
-        <title>{pageTitle}</title>
-        <meta name="description" content={pageDesc} />
-        <link rel="canonical" href="https://sebencapital.com/services/portfolio-management" />
-        <meta property="og:title" content={pageTitle} />
-        <meta property="og:description" content={pageDesc} />
-        <meta property="og:type" content="website" />
-        <script
-          type="application/ld+json"
-          // @ts-ignore
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }}
-        />
-        <script
-          type="application/ld+json"
-          // @ts-ignore
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-        />
-      </Head>
+     
 
       <main className="container max-w-6xl py-8 space-y-16">
         {/* HERO — copper-on-charcoal with image + overlay */}
@@ -134,12 +90,21 @@ export default function PortfolioManagementClient() {
           id="start-evaluation"
           aria-labelledby="pm-hero-title"
           className="relative overflow-hidden rounded-3xl border border-copper-primary/20"
-          style={{
-            backgroundImage: `linear-gradient(to bottom, rgba(15,15,18,.55), rgba(15,15,18,.85)), url(${HERO_BG_URL})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
         >
+           {/* BG layer */}
+  <div className="absolute inset-0 z-0">
+    <Image
+      src="/services/portfolio-hero2.webp"   // public/services/portfolio-hero2.webp
+      alt=""
+      fill
+      priority
+      sizes="(max-width: 768px) 100vw, 1200px"
+      className="object-cover object-center"
+    />
+    {/* lighter overlay so image visible rahe */}
+    <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/70" />
+  </div>
+
           <div className="relative z-10 px-6 md:px-12 py-16 md:py-24 text-center">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-copper-primary/15 border border-copper-primary/30 text-copper-primary mb-5">
               <Shield className="w-3.5 h-3.5" /> Risk-First Approach

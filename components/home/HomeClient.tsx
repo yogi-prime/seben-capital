@@ -6,13 +6,11 @@ import Image from 'next/image'
 import Chatbot from '@/components/Chatbot'
 import Services from '@/components/Services'
 import BlogSection from '@/components/BlogSection'
-import TradingViewMini from '@/components/TradingViewMini'
 import RotatingMarketMini from '@/components/RotatingMarketMini'
 import PerformancePhilosophy from '@/components/PerformancePhilosophy'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 import {
   TrendingUp,
   Users,

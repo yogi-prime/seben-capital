@@ -1,16 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  eslint: {
-    // ✅ Allow build even if ESLint finds errors or warnings
-    ignoreDuringBuilds: true,
-  },
+  // run as a real Node app
+  output: "standalone",
 
-  // Optional — you can add future or image config here if needed
-  typescript: {
-    // ✅ Allow production builds even if there are TS type errors
-    ignoreBuildErrors: true,
-  },
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
+
+  // add remote domains here if you ever load external images
+  // images: { domains: ["res.cloudinary.com", "images.ctfassets.net"] },
 };
 
 export default nextConfig;

@@ -57,8 +57,8 @@ export const metadata: Metadata = {
 }
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} ${cinzel.variable}`}>
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning className={`${inter.variable} ${cinzel.variable}`}>
         <RouteLoader />                      {/* ✅ global overlay loader */}
         <Header />
         {children}
