@@ -1,7 +1,8 @@
-"use client";
+'use client';
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,11 +16,19 @@ type Post = {
   readTime: string;
   category: string;
   date: string;
+  isoDate?: string;
   slug: string;
-  image?: string;
+  image?: string | null; // absolute or /storage/…
   featured?: boolean;
 };
 
+// normalize whatever DB sends
+function resolveImage(src?: string | null) {
+  if (!src) return null;
+  if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("/")) return src;
+  // if backend ever returns path without leading slash (e.g., "storage/…")
+  return `/${src}`;
+}
 export default function BlogClient({ posts }: { posts: Post[] }) {
   const [searchTerm, setSearchTerm] = useState("");
   const categories = useMemo(
@@ -48,22 +57,9 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
       {/* Hero Section */}
       <section className="relative py-24 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-subtle">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJtIDYwIDAgTCAwIDAgMCA2MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJoc2woMjIyIDEyJSAxOCUpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-10"></div>
-          <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-1 bg-copper-primary/20 animate-pulse"
-                style={{
-                  left: `${10 + i * 12}%`,
-                  top: `${20 + Math.random() * 40}%`,
-                  height: `${20 + Math.random() * 40}px`,
-                  animationDelay: `${i * 0.5}s`,
-                  animationDuration: "3s",
-                }}
-              />
-            ))}
-          </div>
+          <div
+            className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJtIDYwIDAgTCAwIDAgMCA2MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJoc2woMjIyIDEyJSAxOCUpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-10"
+          />
         </div>
 
         <div className="container relative z-10 text-center max-w-4xl mx-auto">
@@ -140,14 +136,35 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
                   <h3 className="text-2xl font-heading font-bold mb-6 text-copper-primary">Featured Article</h3>
                   {(() => {
                     const featured = filteredPosts.find((p) => p.featured)!;
+                    const hasImage = typeof featured.image === 'string' && featured.image.length > 4;
+
                     return (
                       <Card className="card-elevated hover-copper transition-all duration-300 overflow-hidden group cursor-pointer">
                         <div className="md:flex">
+                          {/* LEFT: media with DB image */}
                           <div className="md:w-1/2">
-                            <div className="aspect-video bg-gradient-copper/20 flex items-center justify-center" aria-label="Featured cover">
-                              <TrendingUp className="w-12 h-12 text-copper-primary/50" />
+                            <div className="relative aspect-video overflow-hidden">
+                              {hasImage ? (
+                                <>
+                                  <Image
+                                    src={featured.image as string}
+                                    alt={featured.title}
+                                    fill
+                                    className="object-cover"
+                                    sizes="(max-width: 768px) 100vw, 50vw"
+                                    priority
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+                                </>
+                              ) : (
+                                <div className="h-full w-full bg-gradient-copper/20 flex items-center justify-center">
+                                  <TrendingUp className="w-12 h-12 text-copper-primary/50" />
+                                </div>
+                              )}
                             </div>
                           </div>
+
+                          {/* RIGHT: content */}
                           <div className="md:w-1/2 p-6">
                             <div className="flex items-center justify-between mb-3">
                               <Badge variant="outline" className="border-copper-primary/30 text-copper-primary bg-copper-primary/5">
@@ -193,56 +210,75 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {filteredPosts
                   .filter((p) => !p.featured)
-                  .map((post) => (
-                    <Card
-                      key={post.slug}
-                      className="group card-elevated hover-copper transition-all duration-300 hover:scale-[1.02] cursor-pointer"
-                    >
-                      <div className="aspect-video bg-gradient-copper/20 flex items-center justify-center rounded-t-lg" aria-label="Article cover">
-                        <TrendingUp className="w-8 h-8 text-copper-primary/50" />
-                      </div>
-
-                      <CardHeader className="pb-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <Badge variant="outline" className="border-copper-primary/30 text-copper-primary bg-copper-primary/5">
-                            {post.category}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground">{post.date}</span>
+                  .map((post) => {
+                    const hasImage = typeof post.image === 'string' && post.image.length > 4;
+                    return (
+                      <Card
+                        key={post.slug}
+                        className="group card-elevated hover-copper transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+                      >
+                        {/* media with DB image */}
+                        <div className="relative aspect-video rounded-t-lg overflow-hidden" aria-label="Article cover">
+                          {hasImage ? (
+                            <>
+                              <Image
+                                src={post.image as string}
+                                alt={post.title}
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 768px) 100vw, 50vw"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+                            </>
+                          ) : (
+                            <div className="h-full w-full bg-gradient-copper/20 flex items-center justify-center">
+                              <TrendingUp className="w-8 h-8 text-copper-primary/50" />
+                            </div>
+                          )}
                         </div>
 
-                        <CardTitle className="text-xl font-heading group-hover:text-copper-primary transition-colors line-clamp-2">
-                          {post.title}
-                        </CardTitle>
+                        <CardHeader className="pb-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <Badge variant="outline" className="border-copper-primary/30 text-copper-primary bg-copper-primary/5">
+                              {post.category}
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">{post.date}</span>
+                          </div>
 
-                        <CardDescription className="text-sm leading-relaxed line-clamp-3">{post.excerpt}</CardDescription>
-                      </CardHeader>
+                          <CardTitle className="text-xl font-heading group-hover:text-copper-primary transition-colors line-clamp-2">
+                            {post.title}
+                          </CardTitle>
 
-                      <CardContent className="pt-0">
-                        <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-                          <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-1">
-                              <User className="w-4 h-4" />
-                              <span>{post.author}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <Clock className="w-4 h-4" />
-                              <span>{post.readTime}</span>
+                          <CardDescription className="text-sm leading-relaxed line-clamp-3">{post.excerpt}</CardDescription>
+                        </CardHeader>
+
+                        <CardContent className="pt-0">
+                          <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
+                            <div className="flex items-center space-x-4">
+                              <div className="flex items-center space-x-1">
+                                <User className="w-4 h-4" />
+                                <span>{post.author}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <Clock className="w-4 h-4" />
+                                <span>{post.readTime}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <Link href={`/blog/${post.slug}`} aria-label={`Read article: ${post.title}`}>
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-between text-copper-primary hover:text-primary-foreground hover:bg-copper-primary p-0 h-auto py-2"
-                          >
-                            <span>Read Article</span>
-                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                          </Button>
-                        </Link>
-                      </CardContent>
-                    </Card>
-                  ))}
+                          <Link href={`/blog/${post.slug}`} aria-label={`Read article: ${post.title}`}>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-between text-copper-primary hover:text-primary-foreground hover:bg-copper-primary p-0 h-auto py-2"
+                            >
+                              <span>Read Article</span>
+                              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                            </Button>
+                          </Link>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
               </div>
 
               {/* Load More (stub) */}

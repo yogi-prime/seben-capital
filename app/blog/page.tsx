@@ -2,164 +2,185 @@
 import type { Metadata } from "next";
 import BlogClient from "./BlogClient";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-const CANONICAL = "/blog";
-const TITLE =
-  "Trading Blog & Insights | Risk Management, Psychology, Strategies | Seben Capital";
-const DESCRIPTION =
-  "Actionable trading articles on risk management, psychology, technical vs fundamental analysis, options strategies, and building a winning trading plan.";
+// ----- CONFIG -----
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://192.168.29.26:8000/api";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://192.168.29.26:3000";
+const CANONICAL_BASE = "/blog";
 
-// ---- Static post data (same content as your UI) ----
-export const BLOG_POSTS = [
-  {
-    title: "Risk Management: The Foundation of Profitable Trading",
-    excerpt:
-      "Learn why successful traders prioritize capital preservation over profit maximization and how proper risk management can transform your trading results.",
-    author: "Seben Team",
-    readTime: "8 min read",
-    category: "Risk Management",
-    date: "Dec 15, 2024",
-    isoDate: "2024-12-15",
-    slug: "risk-management-foundation",
-    image: "/blog-1.jpg",
-    featured: true,
-  },
-  {
-    title: "Psychology of Trading: Mastering Your Emotions",
-    excerpt:
-      "Understand the psychological challenges every trader faces and discover practical strategies to maintain discipline in volatile markets.",
-    author: "Seben Team",
-    readTime: "12 min read",
-    category: "Psychology",
-    date: "Dec 12, 2024",
-    isoDate: "2024-12-12",
-    slug: "trading-psychology",
-    image: "/blog-2.jpg",
-    featured: false,
-  },
-  {
-    title: "Technical Analysis vs Fundamental Analysis: Which Approach?",
-    excerpt:
-      "Compare the strengths and limitations of technical and fundamental analysis, and learn how to combine both approaches effectively.",
-    author: "Seben Team",
-    readTime: "10 min read",
-    category: "Analysis",
-    date: "Dec 8, 2024",
-    isoDate: "2024-12-08",
-    slug: "technical-vs-fundamental",
-    image: "/blog-3.jpg",
-    featured: false,
-  },
-  {
-    title: "Options Trading Strategies for Beginners",
-    excerpt:
-      "Discover the fundamentals of options trading and learn safe strategies to generate consistent income while managing risk.",
-    author: "Seben Team",
-    readTime: "15 min read",
-    category: "Options",
-    date: "Dec 5, 2024",
-    isoDate: "2024-12-05",
-    slug: "options-trading-strategies",
-    image: "/blog-4.jpg",
-    featured: false,
-  },
-  {
-    title: "Building a Winning Trading Plan",
-    excerpt:
-      "Every successful trader has a plan. Learn how to create a comprehensive trading plan that aligns with your goals and risk tolerance.",
-    author: "Seben Team",
-    readTime: "11 min read",
-    category: "Strategy",
-    date: "Dec 1, 2024",
-    isoDate: "2024-12-01",
-    slug: "building-trading-plan",
-    image: "/blog-5.jpg",
-    featured: false,
-  },
-  {
-    title: "Market Volatility: Your Friend or Foe?",
-    excerpt:
-      "Understanding market volatility is crucial for trading success. Learn how to navigate volatile markets and turn uncertainty into opportunity.",
-    author: "Seben Team",
-    readTime: "9 min read",
-    category: "Analysis",
-    date: "Nov 28, 2024",
-    isoDate: "2024-11-28",
-    slug: "market-volatility-guide",
-    image: "/blog-6.jpg",
-    featured: false,
-  },
-] as const;
+// Revalidate listing every 5 minutes (ISR).
+export const revalidate = 300;
 
-// ---- SEO metadata ----
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: TITLE,
-    template: "%s | Seben Capital",
-  },
-  description: DESCRIPTION,
-  keywords: [
-    "trading blog",
-    "risk management",
-    "trading psychology",
-    "options strategies",
-    "technical analysis",
-    "fundamental analysis",
-    "trading plan",
-    "Seben Capital",
-  ],
-  alternates: {
-    canonical: CANONICAL,
-    types: {
-      "application/rss+xml": `${CANONICAL}/rss.xml`,
-    },
-  },
-  openGraph: {
-    type: "website",
-    url: `${SITE_URL}${CANONICAL}`,
-    title: TITLE,
-    description: DESCRIPTION,
-    siteName: "Seben Capital",
-    images: [{ url: "/og/blog.png", width: 1200, height: 630, alt: "Seben Capital Blog" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: TITLE,
-    description: DESCRIPTION,
-    images: ["/og/blog.png"],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    "max-snippet": -1,
-    "max-image-preview": "large",
-    "max-video-preview": -1,
-  },
+// ---- Types matching Laravel PostController@index minimal shape ----
+type ApiPost = {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt?: string | null;
+  featured_image?: string | null;
+  featured_image_alt?: string | null;
+  read_time?: string | null;
+  word_count?: number | null;
+  is_featured?: boolean;
+  status: "draft" | "scheduled" | "published" | "archived";
+  published_at?: string | null;
+  author_name?: string | null;
+  primaryCategory?: { name: string; slug: string } | null;
+  categories?: { name: string; slug: string }[];
 };
 
-export default function Page() {
-  // Blog schema + Breadcrumbs + Site SearchAction for fast indexing/rich results
+type Paginated<T> = {
+  data: T[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+};
+
+// ---- Helpers ----
+function formatDate(d?: string | null) {
+  if (!d) return "";
+  const dt = new Date(d);
+  return dt.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+}
+
+function toClientPosts(api: ApiPost[]) {
+  return api.map((p) => ({
+    title: p.title,
+    excerpt: p.excerpt ?? "",
+    author: p.author_name ?? "Seben Team",
+    readTime: p.read_time ?? "",
+    category: p.primaryCategory?.name ?? p.categories?.[0]?.name ?? "General",
+    date: formatDate(p.published_at),
+    isoDate: p.published_at ?? undefined,
+    slug: p.slug,
+    image: p.featured_image ?? undefined, // can be "/storage/..." or full URL
+    featured: !!p.is_featured,
+  }));
+}
+
+async function fetchPosts({ page, q, category_slug }: { page: number; q?: string; category_slug?: string }) {
+  const params = new URLSearchParams();
+  params.set("status", "published");
+  params.set("per_page", "12");
+  params.set("page", String(page));
+  if (q) params.set("q", q);
+  if (category_slug) params.set("category_slug", category_slug);
+
+  const res = await fetch(`${API_BASE}/posts?${params.toString()}`, { next: { revalidate } });
+  if (!res.ok) throw new Error(`Failed to fetch posts: ${res.status}`);
+  const data = (await res.json()) as Paginated<ApiPost>;
+  return data;
+}
+
+async function fetchCategories() {
+  const res = await fetch(`${API_BASE}/categories`, { next: { revalidate } });
+  if (!res.ok) return [];
+  const json = await res.json();
+  return (json?.data as { name: string; slug: string }[]) ?? [];
+}
+
+// ---- Dynamic SEO for listing ----
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: { q?: string; category?: string; page?: string };
+}): Promise<Metadata> {
+  const q = (searchParams.q || "").trim();
+  const category = (searchParams.category || "").trim();
+
+  const baseDesc =
+    "Actionable trading articles on risk management, psychology, analysis, options, and building a winning trading plan.";
+
+  const parts: string[] = ["Seben Capital Blog"];
+  if (category) parts.unshift(`Category: ${category}`);
+  if (q) parts.unshift(`Search: ${q}`);
+
+  const title = parts.join(" | ");
+  const description = baseDesc;
+
+  const canonical = new URL(SITE_URL);
+  canonical.pathname = CANONICAL_BASE;
+  if (q) canonical.searchParams.set("q", q);
+  if (category) canonical.searchParams.set("category", category);
+  if (searchParams.page) canonical.searchParams.set("page", searchParams.page);
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: { default: title, template: "%s | Seben Capital" },
+    description,
+    keywords: [
+      "trading blog",
+      "risk management",
+      "trading psychology",
+      "options strategies",
+      "technical analysis",
+      "fundamental analysis",
+      "trading plan",
+      "Seben Capital",
+    ],
+    alternates: {
+      canonical: canonical.pathname + (canonical.search ? canonical.search : ""),
+    },
+    openGraph: {
+      type: "website",
+      url: canonical.toString(),
+      title,
+      description,
+      siteName: "Seben Capital",
+      images: [{ url: "/og/blog.png", width: 1200, height: 630, alt: "Seben Capital Blog" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["/og/blog.png"],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+    },
+  };
+}
+
+// ---- Page Component ----
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: { q?: string; category?: string; page?: string };
+}) {
+  const page = Number(searchParams.page ?? 1);
+  const q = searchParams.q?.trim() || undefined;
+  const categorySlug = searchParams.category?.trim() || undefined;
+
+  const [postsResp] = await Promise.all([
+    fetchPosts({ page, q, category_slug: categorySlug }),
+    // categories are not used by the client UI right now; keeping call if you need later
+    // fetchCategories(),
+  ]);
+
+  const posts = toClientPosts(postsResp.data);
+
+  // Blog JSON-LD
   const blogJsonLd = {
     "@context": "https://schema.org",
     "@type": "Blog",
     name: "Seben Capital Trading Blog",
-    description: DESCRIPTION,
-    url: `${SITE_URL}${CANONICAL}`,
+    description: "Education on risk management, psychology, analysis, options, strategies and more.",
+    url: `${SITE_URL}${CANONICAL_BASE}`,
     inLanguage: "en",
-    publisher: {
-      "@type": "Organization",
-      name: "Seben Capital",
-      url: SITE_URL,
-    },
-    blogPost: BLOG_POSTS.map((p) => ({
+    publisher: { "@type": "Organization", name: "Seben Capital", url: SITE_URL },
+    blogPost: posts.map((p) => ({
       "@type": "BlogPosting",
       headline: p.title,
       description: p.excerpt,
       url: `${SITE_URL}/blog/${p.slug}`,
       datePublished: p.isoDate,
       dateModified: p.isoDate,
-      image: p.image ? `${SITE_URL}${p.image}` : undefined,
+      // ✅ if relative => prefix SITE_URL, otherwise keep absolute
+      image: p.image ? (p.image.startsWith("http") ? p.image : `${SITE_URL}${p.image}`) : undefined,
       author: { "@type": "Organization", name: p.author },
     })),
   };
@@ -169,7 +190,7 @@ export default function Page() {
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
-      { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}${CANONICAL}` },
+      { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}${CANONICAL_BASE}` },
     ],
   };
 
@@ -189,8 +210,7 @@ export default function Page() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteSearch) }} />
-      {/* Keep UI in client component */}
-      <BlogClient posts={BLOG_POSTS as unknown as any[]} />
+      <BlogClient posts={posts as any} />
     </>
   );
 }
