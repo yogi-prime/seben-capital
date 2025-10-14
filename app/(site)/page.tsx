@@ -1,4 +1,4 @@
-// app/page.tsx
+// app/(site)/page.tsx
 import type { Metadata } from 'next'
 import HomeClient from '@/components/home/HomeClient'
 
@@ -7,21 +7,15 @@ export const metadata: Metadata = {
   description:
     'Master disciplined trading with Seben Capital. Join the flagship Utkarsh course, get mentorship, and grow steadily with risk-first strategies.',
   keywords: [
-    'trading course',
-    'utkarsh course',
-    'trading mentorship',
-    'portfolio management',
-    'learn trading',
-    'stock market training',
-    'investment education',
-    'risk management',
+    'trading course','utkarsh course','trading mentorship','portfolio management',
+    'learn trading','stock market training','investment education','risk management',
   ],
-  alternates: { canonical: 'https://sebencapital.com/' },
+  alternates: { canonical: (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000') + '/' },
   openGraph: {
     title: 'Learn Trading, Mentorship & Portfolio Management',
     description:
       'Master disciplined trading with Seben Capital. Join the flagship Utkarsh course, get mentorship, and grow steadily with risk-first strategies.',
-    url: 'https://sebencapital.com/',
+    url: (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000') + '/',
     type: 'website',
     siteName: 'Seben Capital',
     images: [{ url: '/hero1.jpeg', width: 1200, height: 630, alt: 'Seben Capital' }],
@@ -36,18 +30,14 @@ export const metadata: Metadata = {
 }
 
 export default function Page() {
-  // JSON-LD can be rendered from a Server Component safely
   const orgJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: 'Seben Capital',
-    url: 'https://sebencapital.com',
-    logo: 'https://sebencapital.com/logo.png',
+    url: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
+    logo: (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000') + '/logo.png',
     sameAs: [
-      'https://www.facebook.com/',
-      'https://www.instagram.com/',
-      'https://www.linkedin.com/',
-      'https://x.com/',
+      'https://www.facebook.com/','https://www.instagram.com/','https://www.linkedin.com/','https://x.com/',
     ],
   }
 
@@ -55,24 +45,18 @@ export default function Page() {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'Seben Capital',
-    url: 'https://sebencapital.com',
+    url: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
     potentialAction: {
       '@type': 'SearchAction',
-      target: 'https://sebencapital.com/search?q={query}',
+      target: (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000') + '/search?q={query}',
       'query-input': 'required name=query',
     },
   }
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }} />
       <HomeClient />
     </>
   )
