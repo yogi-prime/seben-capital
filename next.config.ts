@@ -1,14 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // run as a real Node app
   output: "standalone",
-
+  images: { unoptimized: true },    // <— add this
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
-
-  // add remote domains here if you ever load external images
-  // images: { domains: ["res.cloudinary.com", "images.ctfassets.net"] },
 };
 
 export default nextConfig;
