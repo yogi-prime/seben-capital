@@ -1,12 +1,9 @@
-// app/blog/[slug]/page.tsx
+// app/(site)/blog/[slug]/page.tsx
 import type { Metadata } from "next";
+import { API, CONFIG } from "@/lib/api";
 import BlogPostClient from "./BlogPostClient";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://192.168.29.26:8000/api";
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://192.168.29.26:3000";
-
-// Incremental revalidate (5 min)
-export const revalidate = 300;
+export const revalidate = 300; // ISR: 5 minutes
 
 // ---------- Types matching Laravel showBySlug ----------
 type ApiPost = {
@@ -24,8 +21,9 @@ type ApiPost = {
   primaryCategory?: { name: string; slug: string } | null;
   categories?: { name: string; slug: string }[];
   tags?: { name: string; slug: string }[];
+  views?: number | null;
 
-  // SEO fields from backend (preferred)
+  // SEO
   seo_title?: string | null;
   seo_description?: string | null;
   canonical_url?: string | null;
@@ -34,33 +32,50 @@ type ApiPost = {
   schema_json?: any | null;
 };
 
+// ---------- API helpers ----------
 async function fetchPost(slug: string) {
-  const res = await fetch(`${API_BASE}/posts/${slug}`, { next: { revalidate } });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error("Failed to fetch post");
-  const json = await res.json();
-  return (json?.data as ApiPost) ?? null;
+  try {
+    const json = await API.get<{ data: ApiPost }>(`/posts/${slug}`);
+    return json?.data ?? null;
+  } catch (e: any) {
+    if (String(e.message || "").includes("404")) return null;
+    throw e;
+  }
 }
 
-async function fetchRelated(primaryCategorySlug?: string, excludeSlug?: string) {
-  const params = new URLSearchParams();
-  params.set("status", "published");
-  params.set("per_page", "3");
-  if (primaryCategorySlug) params.set("category_slug", primaryCategorySlug);
-  const res = await fetch(`${API_BASE}/posts?${params.toString()}`, { next: { revalidate } });
-  if (!res.ok) return [];
-  const json = await res.json();
-  const rows: ApiPost[] = json?.data ?? [];
-  return rows.filter((p) => p.slug !== excludeSlug).slice(0, 3);
+async function fetchRelatedFor(slug: string) {
+  // 1) try dedicated related endpoint
+  try {
+    const r1 = await API.get<{ data: any[] }>(`/posts/${slug}/related?limit=3`);
+    const list1 = r1?.data ?? [];
+    if (list1.length) return list1.slice(0, 2);
+  } catch {}
+
+  // 2) fallback to latest published (exclude current slug)
+  try {
+    const params = new URLSearchParams();
+    params.set("status", "published");
+    params.set("per_page", "3");
+    const r2 = await API.get<{ data: any[] }>(`/posts?${params.toString()}`);
+    const list2 = (r2?.data ?? []).filter((p) => p.slug !== slug);
+    return list2.slice(0, 2);
+  } catch {
+    return [];
+  }
 }
 
+// ---------- Utils ----------
 function fmtDate(iso?: string | null) {
   if (!iso) return "";
   const d = new Date(iso);
-  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
-function stripHtml(s: string) {
+function stripHtml(s?: string | null) {
   return (s || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
@@ -82,15 +97,21 @@ function fallbackSeoTitle(p: ApiPost) {
 
 function fallbackSeoDesc(p: ApiPost) {
   const max = 160;
-  const source = p.excerpt || stripHtml(p.content_html || "") || stripHtml(p.content_markdown || "");
+  const source =
+    p.excerpt ||
+    stripHtml(p.content_html) ||
+    stripHtml(p.content_markdown) ||
+    "";
   return safeEllipsize(source, max);
 }
 
-// ------- Dynamic SEO --------
+// ---------- Dynamic SEO ----------
 export async function generateMetadata(
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
-  const p = await fetchPost(params.slug);
+  const { slug } = await params; // ✅ await params
+  const p = await fetchPost(slug);
+
   if (!p) {
     return {
       title: "Article Not Found | Seben Capital",
@@ -98,22 +119,20 @@ export async function generateMetadata(
     };
   }
 
-  // prefer backend SEO; else fallback smartly
   const title = p.seo_title || fallbackSeoTitle(p);
   const description = p.seo_description || fallbackSeoDesc(p);
-
-  const canonicalUrl = p.canonical_url || `${SITE_URL}/blog/${p.slug}`;
-  const ogImg = p.og_data?.image || p.featured_image || undefined;
+  const canonicalAbs = p.canonical_url || API.siteUrl(`/blog/${p.slug}`);
+  const ogImg = p.og_data?.image || API.img(p.featured_image || undefined);
   const twImg = p.twitter_data?.image || ogImg;
 
   return {
-    metadataBase: new URL(SITE_URL),
+    metadataBase: new URL(CONFIG.SITE_URL),
     title,
     description,
-    alternates: { canonical: `/blog/${p.slug}` },
+    alternates: { canonical: `/blog/${p.slug}` }, // resolved against metadataBase
     openGraph: {
       type: "article",
-      url: `${SITE_URL}/blog/${p.slug}`,
+      url: API.siteUrl(`/blog/${p.slug}`),
       title: p.og_data?.title || title,
       description: p.og_data?.description || description,
       images: ogImg ? [{ url: ogImg }] : undefined,
@@ -132,36 +151,41 @@ export async function generateMetadata(
   };
 }
 
-// --------- Page (Server) ----------
-export default async function Page({ params }: { params: { slug: string } }) {
-  const post = await fetchPost(params.slug);
+// ---------- Page (Server) ----------
+export default async function Page(
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await params; // ✅ await params
+  const post = await fetchPost(slug);
+
   if (!post) {
-    // simple 404 UI
     return (
       <div className="container py-24">
         <h1 className="text-3xl font-bold">Article not found</h1>
-        <p className="text-muted-foreground mt-2">The post you’re looking for doesn’t exist.</p>
+        <p className="text-muted-foreground mt-2">
+          The post you’re looking for doesn’t exist.
+        </p>
       </div>
     );
   }
 
-  const related = await fetchRelated(post.primaryCategory?.slug || post.categories?.[0]?.slug, post.slug);
+  const related = await fetchRelatedFor(post.slug);
 
-  // JSON-LD (prefer backend schema_json)
+  // Prefer backend-provided schema_json; else build minimal Article JSON-LD
   const jsonLd =
-    post.schema_json ||
-    {
+    post.schema_json || {
       "@context": "https://schema.org",
       "@type": "Article",
       headline: safeEllipsize(post.title, 110),
       description: fallbackSeoDesc(post),
-      url: `${SITE_URL}/blog/${post.slug}`,
-      mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`,
-      image: post.featured_image ? [post.featured_image] : undefined,
+      url: API.siteUrl(`/blog/${post.slug}`),
+      mainEntityOfPage: API.siteUrl(`/blog/${post.slug}`),
+      image: post.featured_image ? [API.img(post.featured_image)] : undefined,
       author: [{ "@type": "Person", name: post.author_name || "Seben Team" }],
       datePublished: post.published_at || undefined,
       dateModified: post.published_at || undefined,
-      articleSection: post.primaryCategory?.name || post.categories?.[0]?.name || undefined,
+      articleSection:
+        post.primaryCategory?.name || post.categories?.[0]?.name || undefined,
       keywords: [
         ...(post.categories?.map((c) => c.name) || []),
         ...(post.tags?.map((t) => t.name) || []),
@@ -172,29 +196,38 @@ export default async function Page({ params }: { params: { slug: string } }) {
     title: post.title,
     excerpt: post.excerpt || "",
     author: post.author_name || "Seben Team",
-    authorBio: "Expert trading team focused on education and risk management strategies.",
+    authorBio:
+      "Expert trading team focused on education and risk management strategies.",
     readTime: post.read_time || "",
-    category: post.primaryCategory?.name || post.categories?.[0]?.name || "General",
+    category:
+      post.primaryCategory?.name ||
+      post.categories?.[0]?.name ||
+      "General",
     date: fmtDate(post.published_at),
     slug: post.slug,
-    image: post.featured_image || null,
+    image: API.img(post.featured_image || undefined) || null,
     imageAlt: post.featured_image_alt || "",
     contentHtml: post.content_html || "",
     tags: post.tags?.map((t) => t.name) || [],
+    views: typeof post.views === "number" ? post.views : null,
   };
 
-  const relatedForClient = related.map((p) => ({
+  const relatedForClient = (related || []).map((p: any) => ({
     title: p.title,
     excerpt: p.excerpt || "",
     slug: p.slug,
     category: p.primaryCategory?.name || p.categories?.[0]?.name || "General",
     readTime: p.read_time || "",
     date: fmtDate(p.published_at),
+    image: API.img(p.featured_image || undefined) || null,
   }));
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <BlogPostClient post={dataForClient} related={relatedForClient} />
     </>
   );

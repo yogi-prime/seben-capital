@@ -1,16 +1,11 @@
-// app/blog/page.tsx
+// app/(site)/blog/page.tsx
 import type { Metadata } from "next";
 import BlogClient from "./BlogClient";
+import { API, CONFIG } from "@/lib/api";
 
-// ----- CONFIG -----
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://192.168.29.26:8000/api";
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://192.168.29.26:3000";
-const CANONICAL_BASE = "/blog";
+export const revalidate = 300; // ISR 5 min
 
-// Revalidate listing every 5 minutes (ISR).
-export const revalidate = 300;
-
-// ---- Types matching Laravel PostController@index minimal shape ----
+// ----- Types -----
 type ApiPost = {
   id: number;
   title: string;
@@ -36,11 +31,15 @@ type Paginated<T> = {
   total: number;
 };
 
-// ---- Helpers ----
+// ----- Utils -----
 function formatDate(d?: string | null) {
   if (!d) return "";
   const dt = new Date(d);
-  return dt.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+  return dt.toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
 }
 
 function toClientPosts(api: ApiPost[]) {
@@ -53,12 +52,20 @@ function toClientPosts(api: ApiPost[]) {
     date: formatDate(p.published_at),
     isoDate: p.published_at ?? undefined,
     slug: p.slug,
-    image: p.featured_image ?? undefined, // can be "/storage/..." or full URL
+    image: p.featured_image ? API.img(p.featured_image) : null,
     featured: !!p.is_featured,
   }));
 }
 
-async function fetchPosts({ page, q, category_slug }: { page: number; q?: string; category_slug?: string }) {
+async function fetchPosts({
+  page,
+  q,
+  category_slug,
+}: {
+  page: number;
+  q?: string;
+  category_slug?: string;
+}) {
   const params = new URLSearchParams();
   params.set("status", "published");
   params.set("per_page", "12");
@@ -66,27 +73,19 @@ async function fetchPosts({ page, q, category_slug }: { page: number; q?: string
   if (q) params.set("q", q);
   if (category_slug) params.set("category_slug", category_slug);
 
-  const res = await fetch(`${API_BASE}/posts?${params.toString()}`, { next: { revalidate } });
-  if (!res.ok) throw new Error(`Failed to fetch posts: ${res.status}`);
-  const data = (await res.json()) as Paginated<ApiPost>;
-  return data;
+  const json = await API.get<Paginated<ApiPost>>(`/posts?${params.toString()}`);
+  return json;
 }
 
-async function fetchCategories() {
-  const res = await fetch(`${API_BASE}/categories`, { next: { revalidate } });
-  if (!res.ok) return [];
-  const json = await res.json();
-  return (json?.data as { name: string; slug: string }[]) ?? [];
-}
-
-// ---- Dynamic SEO for listing ----
+// ----- Dynamic SEO (await searchParams) -----
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: { q?: string; category?: string; page?: string };
+  searchParams: Promise<{ q?: string; category?: string; page?: string }>;
 }): Promise<Metadata> {
-  const q = (searchParams.q || "").trim();
-  const category = (searchParams.category || "").trim();
+  const sp = await searchParams; // ✅
+  const q = (sp.q || "").trim();
+  const category = (sp.category || "").trim();
 
   const baseDesc =
     "Actionable trading articles on risk management, psychology, analysis, options, and building a winning trading plan.";
@@ -98,14 +97,14 @@ export async function generateMetadata({
   const title = parts.join(" | ");
   const description = baseDesc;
 
-  const canonical = new URL(SITE_URL);
-  canonical.pathname = CANONICAL_BASE;
+  const canonical = new URL(CONFIG.SITE_URL);
+  canonical.pathname = "/blog";
   if (q) canonical.searchParams.set("q", q);
   if (category) canonical.searchParams.set("category", category);
-  if (searchParams.page) canonical.searchParams.set("page", searchParams.page);
+  if (sp.page) canonical.searchParams.set("page", sp.page);
 
   return {
-    metadataBase: new URL(SITE_URL),
+    metadataBase: new URL(CONFIG.SITE_URL),
     title: { default: title, template: "%s | Seben Capital" },
     description,
     keywords: [
@@ -127,7 +126,9 @@ export async function generateMetadata({
       title,
       description,
       siteName: "Seben Capital",
-      images: [{ url: "/og/blog.png", width: 1200, height: 630, alt: "Seben Capital Blog" }],
+      images: [
+        { url: "/og/blog.png", width: 1200, height: 630, alt: "Seben Capital Blog" },
+      ],
     },
     twitter: {
       card: "summary_large_image",
@@ -145,42 +146,38 @@ export async function generateMetadata({
   };
 }
 
-// ---- Page Component ----
+// ----- Page (await searchParams) -----
 export default async function Page({
   searchParams,
 }: {
-  searchParams: { q?: string; category?: string; page?: string };
+  searchParams: Promise<{ q?: string; category?: string; page?: string }>;
 }) {
-  const page = Number(searchParams.page ?? 1);
-  const q = searchParams.q?.trim() || undefined;
-  const categorySlug = searchParams.category?.trim() || undefined;
+  const sp = await searchParams; // ✅
+  const page = Number(sp.page ?? 1);
+  const q = sp.q?.trim() || undefined;
+  const categorySlug = sp.category?.trim() || undefined;
 
-  const [postsResp] = await Promise.all([
-    fetchPosts({ page, q, category_slug: categorySlug }),
-    // categories are not used by the client UI right now; keeping call if you need later
-    // fetchCategories(),
-  ]);
-
+  const postsResp = await fetchPosts({ page, q, category_slug: categorySlug });
   const posts = toClientPosts(postsResp.data);
 
-  // Blog JSON-LD
+  // JSON-LD
   const blogJsonLd = {
     "@context": "https://schema.org",
     "@type": "Blog",
     name: "Seben Capital Trading Blog",
-    description: "Education on risk management, psychology, analysis, options, strategies and more.",
-    url: `${SITE_URL}${CANONICAL_BASE}`,
+    description:
+      "Education on risk management, psychology, analysis, options, strategies and more.",
+    url: `${CONFIG.SITE_URL}/blog`,
     inLanguage: "en",
-    publisher: { "@type": "Organization", name: "Seben Capital", url: SITE_URL },
+    publisher: { "@type": "Organization", name: "Seben Capital", url: CONFIG.SITE_URL },
     blogPost: posts.map((p) => ({
       "@type": "BlogPosting",
       headline: p.title,
       description: p.excerpt,
-      url: `${SITE_URL}/blog/${p.slug}`,
+      url: `${CONFIG.SITE_URL}/blog/${p.slug}`,
       datePublished: p.isoDate,
       dateModified: p.isoDate,
-      // ✅ if relative => prefix SITE_URL, otherwise keep absolute
-      image: p.image ? (p.image.startsWith("http") ? p.image : `${SITE_URL}${p.image}`) : undefined,
+      image: p.image || undefined,
       author: { "@type": "Organization", name: p.author },
     })),
   };
@@ -189,27 +186,36 @@ export default async function Page({
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
-      { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}${CANONICAL_BASE}` },
+      { "@type": "ListItem", position: 1, name: "Home", item: `${CONFIG.SITE_URL}/` },
+      { "@type": "ListItem", position: 2, name: "Blog", item: `${CONFIG.SITE_URL}/blog` },
     ],
   };
 
   const siteSearch = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    url: SITE_URL,
+    url: CONFIG.SITE_URL,
     potentialAction: {
       "@type": "SearchAction",
-      target: `${SITE_URL}/blog?q={search_term_string}`,
+      target: `${CONFIG.SITE_URL}/blog?q={search_term_string}`,
       "query-input": "required name=search_term_string",
     },
   };
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogJsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteSearch) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(siteSearch) }}
+      />
       <BlogClient posts={posts as any} />
     </>
   );

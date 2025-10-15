@@ -1,133 +1,178 @@
-'use client'
+'use client';
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { X, MessageCircle, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { API } from "@/lib/api";
+
+type Step = {
+  key: string;              // 'greeting' | 'name' | 'phone' | 'email' | ...
+  question: string;
+  placeholder?: string;
+  type?: 'button' | 'text' | 'phone' | 'email';
+  is_button?: boolean;
+};
 
 interface ChatMessage {
   type: 'bot' | 'user';
   content: string;
+  step_key?: string;
 }
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [leadId, setLeadId] = useState<number | null>(null);
+  const [steps, setSteps] = useState<Step[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentInput, setCurrentInput] = useState("");
-  const [currentStep, setCurrentStep] = useState(0);
-  const [userData, setUserData] = useState({ name: "", phone: "", email: "" });
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [userData, setUserData] = useState<Record<string, string>>({});
   const [isInputDisabled, setIsInputDisabled] = useState(false);
   const { toast } = useToast();
+  const scrollerRef = useRef<HTMLDivElement>(null);
 
-  const steps = [
-    { question: "Hi! 👋 I'm Seben Assistant. Can I help you get started?", field: "greeting", placeholder: "Click 'Yes' to continue", isButton: true },
-    { question: "What's your name?", field: "name", placeholder: "Enter your name" },
-    { question: "Great, {name}. What's your phone number?", field: "phone", placeholder: "Enter your phone number" },
-    { question: "Lastly, your email?", field: "email", placeholder: "Enter your email address" },
-  ];
+  // load flow
+  useEffect(() => {
+    if (!isOpen) return;
+    (async () => {
+      try {
+        const json = await API.get<{ data: { steps: Step[] } }>('/chatbot/flow');
+        const flow = json?.data?.steps || [];
+        setSteps(flow);
+        // start with first question
+        if (flow.length) {
+          setMessages([{ type: 'bot', content: flow[0].question, step_key: flow[0].key }]);
+          setCurrentStepIndex(0);
+          setIsInputDisabled(flow[0].type === 'button');
+        }
+      } catch (e: any) {
+        console.error(e);
+        // fallback to the old hard-coded flow if API fails
+        const fallback: Step[] = [
+          { key: 'greeting', question: "Hi! 👋 I'm Seben Assistant. Can I help you get started?", placeholder: "Click 'Yes' to continue", type: 'button', is_button: true },
+          { key: 'name', question: "What's your name?", placeholder: "Enter your name", type: 'text' },
+          { key: 'phone', question: "Great, {name}. What's your phone number?", placeholder: "Enter your phone number", type: 'phone' },
+          { key: 'email', question: "Lastly, your email?", placeholder: "Enter your email address", type: 'email' },
+        ];
+        setSteps(fallback);
+        setMessages([{ type: 'bot', content: fallback[0].question, step_key: 'greeting' }]);
+        setCurrentStepIndex(0);
+        setIsInputDisabled(true);
+      }
+    })();
+  }, [isOpen]);
 
-  const initializeChat = () => {
-    setMessages([{ type: 'bot', content: steps[0].question }]);
-    setCurrentStep(0);
-    setIsInputDisabled(false);
-  };
+  // auto scroll
+  useEffect(() => {
+    scrollerRef.current?.scrollTo({ top: 999999, behavior: 'smooth' });
+  }, [messages.length]);
 
-  const handleStartChat = () => {
-    if (currentStep === 0) {
-      setCurrentStep(1);
-      setMessages((prev) => [...prev, { type: 'bot', content: steps[1].question }]);
-      setIsInputDisabled(false);
+  const validate = (val: string, step: Step): boolean => {
+    if (!val.trim()) return false;
+    if (step.type === 'email') {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
     }
-  };
-
-  const validateInput = (value: string, field: string): boolean => {
-    if (!value.trim()) return false;
-    if (field === 'email') {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      return emailRegex.test(value);
-    }
-    if (field === 'phone') {
-      const phoneRegex = /^[6-9]\d{9}$/;
-      return phoneRegex.test(value.replace(/\s+/g, ''));
+    if (step.type === 'phone') {
+      return /^[6-9]\d{9}$/.test(val.replace(/\s+/g, ''));
     }
     return true;
   };
 
-  const handleSubmit = () => {
-    if (!currentInput.trim()) return;
+  const sendToAPI = async (field: string, value: string, completed = false) => {
+    try {
+      const res = await API.post<{ data: { lead_id: number } }>('/chatbot/leads', {
+        json: { lead_id: leadId, field, value, completed, answers: completed ? userData : undefined, messages: completed ? messages : undefined }
+      });
+      if (res?.data?.lead_id && !leadId) setLeadId(res.data.lead_id);
+    } catch (e: any) {
+      console.error(e);
+      // don't block the UX
+    }
+  };
 
-    const currentField = steps[currentStep].field;
+  const startAfterGreeting = async () => {
+    const idx = 1;
+    setCurrentStepIndex(idx);
+    const next = steps[idx];
+    setMessages(prev => [...prev, { type: 'bot', content: next.question.replace('{name}', userData.name || ''), step_key: next.key }]);
+    setIsInputDisabled(false);
+  };
 
-    if (!validateInput(currentInput, currentField)) {
+  const handleSubmit = async () => {
+    const step = steps[currentStepIndex];
+    if (!step) return;
+
+    // greeting button flow
+    if (step.type === 'button') {
+      await startAfterGreeting();
+      return;
+    }
+
+    const value = currentInput.trim();
+    if (!validate(value, step)) {
       toast({
         title: "Invalid Input",
         description:
-          currentField === 'email'
-            ? "Please enter a valid email address"
-            : currentField === 'phone'
-            ? "Please enter a valid Indian phone number"
-            : "Please enter a valid value",
+          step.type === 'email' ? "Please enter a valid email address" :
+          step.type === 'phone' ? "Please enter a valid Indian phone number" :
+          "Please enter a valid value",
         variant: "destructive",
       });
       return;
     }
 
-    setMessages((prev) => [...prev, { type: 'user', content: currentInput }]);
-    setUserData((prev) => ({ ...prev, [currentField]: currentInput }));
-
-    const confirmationMessage = `Thanks, ${currentField === 'name' ? currentInput : userData.name}!`;
-    setMessages((prev) => [...prev, { type: 'bot', content: confirmationMessage }]);
-
+    // show user's message
+    setMessages(prev => [...prev, { type: 'user', content: value, step_key: step.key }]);
+    // store locally
+    const newData = { ...userData, [step.key]: value };
+    setUserData(newData);
     setCurrentInput("");
     setIsInputDisabled(true);
 
-    setTimeout(() => {
-      if (currentStep < steps.length - 1) {
-        const nextStep = currentStep + 1;
-        setCurrentStep(nextStep);
+    // save incremental to API
+    await sendToAPI(step.key, value, false);
 
-        if (nextStep < steps.length) {
-          const nextQuestion = steps[nextStep].question.replace('{name}', userData.name || currentInput);
-          setMessages((prev) => [...prev, { type: 'bot', content: nextQuestion }]);
-          setIsInputDisabled(false);
-        }
+    // small confirmation bubble
+    const who = step.key === 'name' ? value : (newData.name || 'there');
+    setMessages(prev => [...prev, { type: 'bot', content: `Thanks, ${who}!` }]);
+
+    // next question or finish
+    setTimeout(async () => {
+      if (currentStepIndex < steps.length - 1) {
+        const nextIdx = currentStepIndex + 1;
+        setCurrentStepIndex(nextIdx);
+        const nxt = steps[nextIdx];
+        const q = nxt.question.replace('{name}', newData.name || value);
+        setMessages(prev => [...prev, { type: 'bot', content: q, step_key: nxt.key }]);
+        setIsInputDisabled(nxt.type === 'button');
       } else {
-        setTimeout(() => {
-          setMessages((prev) => [
-            ...prev,
-            { type: 'bot', content: "Thank you for your valuable time. Our team will connect with you shortly." },
-          ]);
-          setTimeout(() => {
-            setMessages((prev) => [...prev, { type: 'bot', content: "How would you like to proceed?" }]);
-          }, 1000);
-        }, 500);
+        // final submit
+        await sendToAPI(step.key, value, true);
 
-        // Replace with API call to store lead
-        // console.log('Lead captured:', { ...userData, [currentField]: currentInput });
-
-        toast({
-          title: "Success!",
-          description: "Your information has been saved. We'll contact you shortly.",
-          variant: "default",
-        });
+        setMessages(prev => [
+          ...prev,
+          { type: 'bot', content: "Thank you for your valuable time. Our team will connect with you shortly." },
+          { type: 'bot', content: "How would you like to proceed?" },
+        ]);
+        setIsInputDisabled(true);
+        toast({ title: "Success!", description: "Your information has been saved. We'll contact you shortly." });
       }
-    }, 1000);
+    }, 800);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const onKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isInputDisabled) handleSubmit();
   };
 
+  // UI
   if (!isOpen) {
     return (
       <Button
         aria-label="Open assistant chat"
-        onClick={() => {
-          setIsOpen(true);
-          if (messages.length === 0) initializeChat();
-        }}
+        onClick={() => setIsOpen(true)}
         className="fixed right-4 md:right-6 w-14 h-14 rounded-full bg-gradient-copper hover:scale-110 transition-transform shadow-copper z-[60] lg:bottom-6"
         size="icon"
         style={{ bottom: `calc(env(safe-area-inset-bottom, 0px) + 84px)` }}
@@ -136,6 +181,9 @@ const Chatbot = () => {
       </Button>
     );
   }
+
+  const step = steps[currentStepIndex];
+  const placeholder = step?.placeholder || "Type here…";
 
   return (
     <Card
@@ -149,68 +197,49 @@ const Chatbot = () => {
           <h3 className="font-semibold">Seben Assistant</h3>
           <p className="text-sm opacity-90">Let's get you started</p>
         </div>
-        <Button
-          aria-label="Close chat"
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsOpen(false)}
-          className="text-primary-foreground hover:bg-white/20"
-        >
+        <Button aria-label="Close chat" variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-primary-foreground hover:bg-white/20">
           <X className="h-4 w-4" />
         </Button>
       </CardHeader>
 
       <CardContent className="flex-1 min-h-0 flex flex-col p-0">
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4" aria-live="polite">
-          {messages.map((message, index) => (
-            <div key={index} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div
-                className={`max-w-[80%] p-3 rounded-lg text-sm ${
-                  message.type === 'user' ? 'bg-copper-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {message.content}
+        <div ref={scrollerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4" aria-live="polite">
+          {messages.map((m, i) => (
+            <div key={i} className={`flex ${m.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] p-3 rounded-lg text-sm ${m.type === 'user' ? 'bg-copper-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                {m.content}
               </div>
             </div>
           ))}
 
-          {currentStep >= steps.length - 1 && messages.length > 6 && (
+          {currentStepIndex >= steps.length - 1 && messages.length > 4 && (
             <div className="space-y-2">
               <Button size="sm" className="w-full bg-gradient-copper">WhatsApp Us</Button>
-              <Button variant="outline" size="sm" className="w-full border-copper-primary/30 text-copper-primary">
-                Explore Utkarsh
-              </Button>
-              <Button variant="outline" size="sm" className="w-full border-copper-primary/30 text-copper-primary">
-                Download Brochure
-              </Button>
+              <Button variant="outline" size="sm" className="w-full border-copper-primary/30 text-copper-primary">Explore Utkarsh</Button>
+              <Button variant="outline" size="sm" className="w-full border-copper-primary/30 text-copper-primary">Download Brochure</Button>
             </div>
           )}
         </div>
 
-        {currentStep < steps.length && (
+        {/* Input area */}
+        {step && (
           <div className="p-4 border-t border-border shrink-0 sticky bottom-0 bg-background/80 backdrop-blur">
-            {currentStep === 0 ? (
-              <Button onClick={handleStartChat} className="w-full bg-gradient-copper">
+            {step.type === 'button' ? (
+              <Button onClick={startAfterGreeting} className="w-full bg-gradient-copper">
                 Yes, let's get started!
               </Button>
             ) : (
               <div className="flex space-x-2">
                 <Input
-                  aria-label={steps[currentStep]?.placeholder}
+                  aria-label={placeholder}
                   value={currentInput}
                   onChange={(e) => setCurrentInput(e.target.value)}
-                  placeholder={steps[currentStep]?.placeholder}
+                  placeholder={placeholder}
                   disabled={isInputDisabled}
-                  onKeyDown={handleKeyPress}
+                  onKeyDown={onKeyPress}
                   className="flex-1"
                 />
-                <Button
-                  aria-label="Send"
-                  onClick={handleSubmit}
-                  disabled={isInputDisabled || !currentInput.trim()}
-                  size="icon"
-                  className="bg-gradient-copper"
-                >
+                <Button aria-label="Send" onClick={handleSubmit} disabled={isInputDisabled || !currentInput.trim()} size="icon" className="bg-gradient-copper">
                   <Send className="h-4 w-4" />
                 </Button>
               </div>

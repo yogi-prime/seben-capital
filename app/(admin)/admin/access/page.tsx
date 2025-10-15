@@ -54,7 +54,7 @@ export default function AdminAccessPage() {
           <form onSubmit={submit} className="space-y-4">
             <Input
               inputMode="text"
-              pattern="[A-Za-z0-9]{4}"
+              pattern="[A-Za-z0-9]{6}"
               maxLength={8}
               placeholder="Enter code e.g. SHIVI"
               value={code}

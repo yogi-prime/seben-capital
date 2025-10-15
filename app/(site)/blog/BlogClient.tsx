@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+// import Image from "next/image"; // ❌ remove
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Clock, User, ArrowRight, Search, Filter, TrendingUp } from "lucide-react";
+import { API } from "@/lib/api";
 
 type Post = {
   title: string;
@@ -18,17 +19,10 @@ type Post = {
   date: string;
   isoDate?: string;
   slug: string;
-  image?: string | null; // absolute or /storage/…
+  image?: string | null;    // absolute OR /storage/...
   featured?: boolean;
 };
 
-// normalize whatever DB sends
-function resolveImage(src?: string | null) {
-  if (!src) return null;
-  if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("/")) return src;
-  // if backend ever returns path without leading slash (e.g., "storage/…")
-  return `/${src}`;
-}
 export default function BlogClient({ posts }: { posts: Post[] }) {
   const [searchTerm, setSearchTerm] = useState("");
   const categories = useMemo(
@@ -39,47 +33,39 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
 
   const filteredPosts = useMemo(() => {
     const s = searchTerm.toLowerCase().trim();
-    return posts.filter((post) => {
-      const matchesSearch =
-        !s ||
-        post.title.toLowerCase().includes(s) ||
-        post.excerpt.toLowerCase().includes(s);
-      const matchesCategory =
-        selectedCategory === "All" || post.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    });
+    return posts
+      .map(p => ({ ...p, image: p.image ? API.img(p.image) : null })) // normalize to absolute/relative URL
+      .filter((post) => {
+        const matchesSearch =
+          !s ||
+          post.title.toLowerCase().includes(s) ||
+          post.excerpt.toLowerCase().includes(s);
+        const matchesCategory =
+          selectedCategory === "All" || post.category === selectedCategory;
+        return matchesSearch && matchesCategory;
+      });
   }, [posts, searchTerm, selectedCategory]);
 
-  const popularPosts = posts.slice(0, 3);
+  const popularPosts = filteredPosts.slice(0, 3);
 
   return (
     <main className="min-h-screen bg-background text-foreground" aria-labelledby="blog-hero-heading">
-      {/* Hero Section */}
+      {/* Hero */}
       <section className="relative py-24 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-subtle">
-          <div
-            className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJtIDYwIDAgTCAwIDAgMCA2MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJoc2woMjIyIDEyJSAxOCUpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-10"
-          />
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJtIDYwIDAgTCAwIDAgMCA2MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJoc2woMjIyIDEyJSAxOCUpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-10" />
         </div>
-
         <div className="container relative z-10 text-center max-w-4xl mx-auto">
-          <Badge
-            aria-label="Trading Education Hub"
-            variant="outline"
-            className="mb-6 border-copper-primary/30 text-copper-primary bg-copper-primary/5 px-4 py-2"
-          >
+          <Badge variant="outline" className="mb-6 border-copper-primary/30 text-copper-primary bg-copper-primary/5 px-4 py-2">
             <TrendingUp className="w-4 h-4 mr-2" />
             Trading Education Hub
           </Badge>
-
           <h1 id="blog-hero-heading" className="text-4xl md:text-6xl font-heading font-bold mb-6">
             Insights & <span className="text-gradient-copper">Strategies</span>
           </h1>
-
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
             Stay updated with trading psychology, strategies, market trends, and Seben Capital research to enhance your trading journey.
           </p>
-
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button className="bg-gradient-copper hover:scale-105 transition-transform">
               Subscribe for Updates
@@ -91,11 +77,9 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
 
       <section className="pb-24" aria-labelledby="blog-listing-heading">
         <div className="container">
-          <h2 id="blog-listing-heading" className="sr-only">
-            Latest Articles
-          </h2>
+          <h2 id="blog-listing-heading" className="sr-only">Latest Articles</h2>
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Main Content */}
+            {/* Main */}
             <div className="lg:col-span-3">
               {/* Search & Filters */}
               <div className="flex flex-col md:flex-row gap-4 mb-8" role="search">
@@ -130,29 +114,29 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
                 </div>
               </div>
 
-              {/* Featured Post */}
+              {/* Featured */}
               {filteredPosts.find((p) => p.featured) && (
                 <div className="mb-12">
                   <h3 className="text-2xl font-heading font-bold mb-6 text-copper-primary">Featured Article</h3>
                   {(() => {
                     const featured = filteredPosts.find((p) => p.featured)!;
-                    const hasImage = typeof featured.image === 'string' && featured.image.length > 4;
+                    const hasImage = !!featured.image;
 
                     return (
                       <Card className="card-elevated hover-copper transition-all duration-300 overflow-hidden group cursor-pointer">
                         <div className="md:flex">
-                          {/* LEFT: media with DB image */}
                           <div className="md:w-1/2">
                             <div className="relative aspect-video overflow-hidden">
                               {hasImage ? (
                                 <>
-                                  <Image
+                                  {/* plain <img> instead of next/image */}
+                                  <img
                                     src={featured.image as string}
                                     alt={featured.title}
-                                    fill
-                                    className="object-cover"
-                                    sizes="(max-width: 768px) 100vw, 50vw"
-                                    priority
+                                    className="absolute inset-0 h-full w-full object-cover"
+                                    loading="eager"
+                                    fetchPriority="high"
+                                    decoding="async"
                                   />
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
                                 </>
@@ -164,7 +148,6 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
                             </div>
                           </div>
 
-                          {/* RIGHT: content */}
                           <div className="md:w-1/2 p-6">
                             <div className="flex items-center justify-between mb-3">
                               <Badge variant="outline" className="border-copper-primary/30 text-copper-primary bg-copper-primary/5">
@@ -177,7 +160,9 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
                               {featured.title}
                             </CardTitle>
 
-                            <CardDescription className="text-base leading-relaxed mb-4">{featured.excerpt}</CardDescription>
+                            <CardDescription className="text-base leading-relaxed mb-4">
+                              {featured.excerpt}
+                            </CardDescription>
 
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-4 text-sm text-muted-foreground">
@@ -192,7 +177,7 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
                               </div>
 
                               <Link href={`/blog/${featured.slug}`} aria-label={`Read article: ${featured.title}`}>
-                                <Button variant="ghost" className="text-copper-primary hover:bg-copper-primary hover:text-primary-foreground">
+                                <Button variant="ghost" className="text-copper-primary hover:bg-copper-primary hover:text-primary-foreground px-3">
                                   Read Article
                                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                                 </Button>
@@ -211,22 +196,20 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
                 {filteredPosts
                   .filter((p) => !p.featured)
                   .map((post) => {
-                    const hasImage = typeof post.image === 'string' && post.image.length > 4;
+                    const hasImage = !!post.image;
                     return (
-                      <Card
-                        key={post.slug}
-                        className="group card-elevated hover-copper transition-all duration-300 hover:scale-[1.02] cursor-pointer"
-                      >
-                        {/* media with DB image */}
+                      <Card key={post.slug} className="group card-elevated hover-copper transition-all duration-300 hover:scale-[1.02] cursor-pointer">
                         <div className="relative aspect-video rounded-t-lg overflow-hidden" aria-label="Article cover">
                           {hasImage ? (
                             <>
-                              <Image
+                              {/* plain <img> */}
+                              <img
                                 src={post.image as string}
                                 alt={post.title}
-                                fill
-                                className="object-cover"
-                                sizes="(max-width: 768px) 100vw, 50vw"
+                                className="absolute inset-0 h-full w-full object-cover"
+                                loading="lazy"
+                                decoding="async"
+                                referrerPolicy="no-referrer"
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
                             </>
@@ -249,7 +232,9 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
                             {post.title}
                           </CardTitle>
 
-                          <CardDescription className="text-sm leading-relaxed line-clamp-3">{post.excerpt}</CardDescription>
+                          <CardDescription className="text-sm leading-relaxed line-clamp-3">
+                            {post.excerpt}
+                          </CardDescription>
                         </CardHeader>
 
                         <CardContent className="pt-0">
@@ -269,7 +254,7 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
                           <Link href={`/blog/${post.slug}`} aria-label={`Read article: ${post.title}`}>
                             <Button
                               variant="ghost"
-                              className="w-full justify-between text-copper-primary hover:text-primary-foreground hover:bg-copper-primary p-0 h-auto py-2"
+                              className="w-full justify-between text-copper-primary hover:text-primary-foreground hover:bg-copper-primary px-3 py-2"
                             >
                               <span>Read Article</span>
                               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -303,17 +288,12 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
                     <CardDescription>Get weekly trading insights delivered to your inbox</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <Input
-                      placeholder="Enter your email"
-                      aria-label="Email address"
-                      type="email"
-                      className="bg-background border-copper-primary/20 focus:border-copper-primary"
-                    />
+                    <Input placeholder="Enter your email" aria-label="Email address" type="email" className="bg-background border-copper-primary/20 focus:border-copper-primary" />
                     <Button className="w-full bg-gradient-copper">Subscribe</Button>
                   </CardContent>
                 </Card>
 
-                {/* Popular Posts */}
+                {/* Popular */}
                 <Card className="card-elevated">
                   <CardHeader>
                     <CardTitle className="text-lg font-heading text-copper-primary">Popular Posts</CardTitle>
