@@ -7,7 +7,7 @@ export const revalidate = 3600; // ISR 1 hour
 
 export async function generateMetadata(): Promise<Metadata> {
   const title = "The 10-Bot Fund | AI Trading Ecosystem | Seben Capital";
-  const description = "Institutional-grade AI trading ecosystem with 10 specialized bots. Professional risk management, transparent performance, and sophisticated execution.";
+  const description = "10 proprietary trading algorithms. One synchronized ecosystem — precision-engineered for consistent, risk-controlled returns.";
   
   return {
     metadataBase: new URL(CONFIG.SITE_URL),
@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description,
     keywords: [
       "AI trading",
-      "automated trading",
+      "automated trading", 
       "trading bots",
       "algorithmic trading",
       "investment fund",
