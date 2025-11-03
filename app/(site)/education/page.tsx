@@ -65,9 +65,9 @@ const courses: Course[] = [
     id: "utkarsh",
     title: "Utkarsh - Complete Trading Mastery",
     subtitle: "From Basics to Execution",
-    price: "₹15,999",
-    duration: "6 Weeks",
-    sessions: "20+",
+    price: "₹49,999",
+    duration: "52 Weeks",
+    sessions: "75+",
     students: "500+",
     rating: "4.9",
     level: "Beginner to Advanced",
@@ -313,7 +313,7 @@ export default function CoursesPage() {
                     {/* CTAs (as links for SEO; visual unchanged) */}
                     <div className="space-y-3">
                       <Button asChild className="w-full bg-gradient-copper hover:scale-105 transition-transform">
-                        <Link href={`/courses/${course.id}`} aria-label={`Enroll in ${course.title}`}>
+                        <Link href={`/education/${course.id}`} aria-label={`Enroll in ${course.title}`}>
                           Enroll Now - {course.price}
                           <ArrowRight className="w-4 h-4 ml-2" />
                         </Link>
@@ -326,7 +326,7 @@ export default function CoursesPage() {
                           size="sm"
                           className="border-copper-primary/30 text-copper-primary hover:bg-copper-primary hover:text-primary-foreground"
                         >
-                          <Link href={`/courses/${course.id}#syllabus`} aria-label={`Download syllabus for ${course.title}`}>
+                          <Link href={`/education/${course.id}#syllabus`} aria-label={`Download syllabus for ${course.title}`}>
                             Download Syllabus
                           </Link>
                         </Button>

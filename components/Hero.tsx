@@ -56,7 +56,7 @@ const Hero = () => {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-12">
               <Button size="lg" className="bg-gradient-copper hover:scale-105 transition-transform px-8 py-3 text-lg font-semibold" asChild>
-                <Link href="/courses/utkarsh">Explore Utkarsh</Link>
+                <Link href="/education/utkarsh">Explore Utkarsh</Link>
               </Button>
               <a href="https://wa.me/919737965552" target="_blank" rel="noopener noreferrer" aria-label="Talk to us on WhatsApp">
                 <Button variant="outline" size="lg" className="border-copper-primary/30 text-copper-primary hover:bg-copper-primary hover:text-primary-foreground px-8 py-3 text-lg">

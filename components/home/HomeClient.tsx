@@ -25,7 +25,30 @@ import {
   MapPin,
 } from 'lucide-react'
 
-export default function HomeClient() {
+
+type Post = {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt?: string | null;
+  featured_image?: string | null;
+  featured_image_alt?: string | null;
+  read_time?: string | null;
+  word_count?: number | null;
+  is_featured?: boolean;
+  status: "draft" | "scheduled" | "published" | "archived";
+  published_at?: string | null;
+  author_name?: string | null;
+  primaryCategory?: { name: string; slug: string } | null;
+  categories?: { name: string; slug: string }[];
+};
+
+interface HomeClientProps {
+  posts: Post[];
+}
+
+
+export default function HomeClient({ posts }: HomeClientProps) {
   const [marketData, setMarketData] = useState({
     value: '+2.4%',
     trend: 'up' as 'up' | 'down',
@@ -71,7 +94,7 @@ export default function HomeClient() {
         'Personalized guidance from experienced traders who have successfully navigated volatile markets.',
       features: ['1:1 Sessions', 'Portfolio Review', 'Strategy Development', 'Ongoing Support'],
       cta: 'Get Mentored',
-      href: '/courses/mentorship',
+      href: '/education/mentorship',
     },
   ]
 
@@ -290,7 +313,7 @@ export default function HomeClient() {
 
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Button className="bg-gradient-copper hover:scale-105 transition-transform" size="lg" asChild>
-                    <Link href="/courses/utkarsh">Enroll Now</Link>
+                    <Link href="/education/utkarsh">Enroll Now</Link>
                   </Button>
                   <Button
                     variant="outline"
@@ -347,7 +370,7 @@ export default function HomeClient() {
 
       <Services />
       <PerformancePhilosophy />
-      <BlogSection />
+      <BlogSection posts={posts} />
  {/* Offices & Maps */}
         <section className="py-24 bg-background-secondary">
           <div className="container">
@@ -467,7 +490,7 @@ export default function HomeClient() {
                     className="bg-gradient-copper hover:scale-105 transition-transform px-8 py-3 text-lg font-semibold"
                     asChild
                   >
-                    <Link href="/courses/utkarsh">
+                    <Link href="/education/utkarsh">
                       join Utkarsh Course <ArrowRight className="w-5 h-5 ml-2" />
                     </Link>
                   </Button>

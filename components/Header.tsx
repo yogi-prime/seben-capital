@@ -17,7 +17,7 @@ const Header = () => {
   ];
 
   const desktopNav = [
-    { name: "Educaton", href: "/courses" },
+    { name: "Educaton", href: "/education" },
     { name: "Services", href: "/services" },
     { name: "Tools", href: "/tools" },
     { name: "Blog", href: "/blog" },
@@ -64,7 +64,7 @@ const Header = () => {
               Talk to Us
             </a>
             <Link
-              href="/courses"
+              href="/education"
               className="rounded-md px-4 py-2 bg-gradient-copper hover:scale-105 transition-transform text-white text-sm font-medium"
             >
               Explore Utkarsh

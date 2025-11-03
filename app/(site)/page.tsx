@@ -1,6 +1,7 @@
 // app/(site)/page.tsx
 import type { Metadata } from 'next'
 import HomeClient from '@/components/home/HomeClient'
+import { API } from '@/lib/api' // ⚠️ IMPORT KARNA BHOOL GAYE THE
 
 export const metadata: Metadata = {
   title: 'Learn Trading, Mentorship & Portfolio Management',
@@ -29,7 +30,54 @@ export const metadata: Metadata = {
   },
 }
 
-export default function Page() {
+// Type definition (same as before)
+type ApiPost = {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt?: string | null;
+  featured_image?: string | null;
+  featured_image_alt?: string | null;
+  read_time?: string | null;
+  word_count?: number | null;
+  is_featured?: boolean;
+  status: "draft" | "scheduled" | "published" | "archived";
+  published_at?: string | null;
+  author_name?: string | null;
+  primaryCategory?: { name: string; slug: string } | null;
+  categories?: { name: string; slug: string }[];
+};
+
+type Paginated<T> = {
+  data: T[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+};
+
+// Fetch function
+async function fetchLatestPosts() {
+  try {
+    const params = new URLSearchParams();
+    params.set("status", "published");
+    params.set("per_page", "3");
+    params.set("page", "1");
+    params.set("sort", "published_at");
+    params.set("order", "desc");
+
+    const json = await API.get<Paginated<ApiPost>>(`/posts?${params.toString()}`);
+    return json.data;
+  } catch (error) {
+    console.error("Failed to fetch blog posts:", error);
+    return [];
+  }
+}
+
+// ✅ ASYNC BANAO PAGE COMPONENT KO
+export default async function Page() {
+  const posts = await fetchLatestPosts(); // ✅ Ab yeh kaam karega
+  
   const orgJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -37,7 +85,10 @@ export default function Page() {
     url: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
     logo: (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000') + '/logo.png',
     sameAs: [
-      'https://www.facebook.com/','https://www.instagram.com/','https://www.linkedin.com/','https://x.com/',
+      'https://www.facebook.com/',
+      'https://www.instagram.com/',
+      'https://www.linkedin.com/',
+      'https://x.com/',
     ],
   }
 
@@ -57,7 +108,7 @@ export default function Page() {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }} />
-      <HomeClient />
+      <HomeClient posts={posts} />
     </>
   )
 }

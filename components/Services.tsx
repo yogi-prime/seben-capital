@@ -33,9 +33,9 @@ const Services = () => {
       description:
         "Systematic trading using proven algorithms and quantitative strategies for consistent execution.",
       features: ["Backtested Strategies", "24/7 Execution", "Risk Parameters", "Performance Monitoring"],
-      cta: "Join Waitlist",
-      status: "coming-soon",
-      route: "",
+      cta: "Start Evaluation",
+      status: "available",
+      route: "/bots",
     },
     {
       title: "General Trading Desk",

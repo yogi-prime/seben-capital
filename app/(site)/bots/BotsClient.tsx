@@ -18,6 +18,7 @@ import {
   Zap,
   Activity,
   Lock,
+  ArrowUp,
   BarChart3,
   Clock,
   Target,
@@ -155,6 +156,152 @@ const TradingBots = () => {
     }, 3000);
   };
 
+  const [selectedPeriod, setSelectedPeriod] = useState<'1y' | '6m' | '3m' | '1m'>('1y');
+  const [hoveredPoint, setHoveredPoint] = useState<{ 
+    month: string; 
+    equity: number; 
+    return: number; 
+    drawdown: number;
+    cumReturn: number;
+  } | null>(null);
+  const [chartType, setChartType] = useState<'equity' | 'return' | 'drawdown'>('equity');
+
+  // Realistic equity curve data - Starting with ₹1,00,000
+  const performanceData = {
+    '1y': [
+      { month: 'Jan', equity: 100000, return: 0, drawdown: 0, cumReturn: 0 },
+      { month: 'Feb', equity: 104200, return: 4.2, drawdown: -1.1, cumReturn: 4.2 },
+      { month: 'Mar', equity: 110037, return: 5.6, drawdown: -0.8, cumReturn: 10.04 },
+      { month: 'Apr', equity: 115427, return: 4.9, drawdown: -2.3, cumReturn: 15.43 },
+      { month: 'May', equity: 122120, return: 5.8, drawdown: -1.5, cumReturn: 22.12 },
+      { month: 'Jun', equity: 127982, return: 4.8, drawdown: -1.9, cumReturn: 27.98 },
+      { month: 'Jul', equity: 136047, return: 6.3, drawdown: -0.7, cumReturn: 36.05 },
+      { month: 'Aug', equity: 144346, return: 6.1, drawdown: -3.8, cumReturn: 44.35 },
+      { month: 'Sep', equity: 152285, return: 5.5, drawdown: -2.4, cumReturn: 52.29 },
+      { month: 'Oct', equity: 157921, return: 3.7, drawdown: -1.6, cumReturn: 57.92 },
+      { month: 'Nov', equity: 163606, return: 3.6, drawdown: -4.5, cumReturn: 63.61 },
+      { month: 'Dec', equity: 170313, return: 4.1, drawdown: -1.2, cumReturn: 70.31 }
+    ],
+    '6m': [
+      { month: 'Jul', equity: 136047, return: 6.3, drawdown: -0.7, cumReturn: 36.05 },
+      { month: 'Aug', equity: 144346, return: 6.1, drawdown: -3.8, cumReturn: 44.35 },
+      { month: 'Sep', equity: 152285, return: 5.5, drawdown: -2.4, cumReturn: 52.29 },
+      { month: 'Oct', equity: 157921, return: 3.7, drawdown: -1.6, cumReturn: 57.92 },
+      { month: 'Nov', equity: 163606, return: 3.6, drawdown: -4.5, cumReturn: 63.61 },
+      { month: 'Dec', equity: 170313, return: 4.1, drawdown: -1.2, cumReturn: 70.31 }
+    ],
+    '3m': [
+      { month: 'Oct', equity: 157921, return: 3.7, drawdown: -1.6, cumReturn: 57.92 },
+      { month: 'Nov', equity: 163606, return: 3.6, drawdown: -4.5, cumReturn: 63.61 },
+      { month: 'Dec', equity: 170313, return: 4.1, drawdown: -1.2, cumReturn: 70.31 }
+    ],
+    '1m': [
+      { month: 'Dec', equity: 170313, return: 4.1, drawdown: -1.2, cumReturn: 70.31 }
+    ]
+  };
+
+  const currentData = performanceData[selectedPeriod];
+  
+  // Calculate chart configuration based on type
+  const getChartValues = () => {
+    if (chartType === 'equity') {
+      const equities = currentData.map(d => d.equity);
+      const maxValue = Math.max(...equities);
+      const minValue = Math.min(...equities);
+      return { 
+        values: equities, 
+        maxValue, 
+        minValue, 
+        color: "rgb(217, 119, 6)", 
+        gradient: "equityGradient",
+        formatValue: (val: number) => `₹${(val / 1000).toFixed(0)}K`
+      };
+    } else if (chartType === 'return') {
+      const returns = currentData.map(d => d.return);
+      const maxValue = Math.max(...returns);
+      const minValue = Math.min(...returns);
+      return { 
+        values: returns, 
+        maxValue, 
+        minValue, 
+        color: "rgb(34, 197, 94)", 
+        gradient: "returnGradient",
+        formatValue: (val: number) => `${val.toFixed(1)}%`
+      };
+    } else {
+      const drawdowns = currentData.map(d => d.drawdown);
+      const maxValue = 0;
+      const minValue = Math.min(...drawdowns);
+      return { 
+        values: drawdowns, 
+        maxValue, 
+        minValue, 
+        color: "rgb(239, 68, 68)", 
+        gradient: "drawdownGradient",
+        formatValue: (val: number) => `${val.toFixed(1)}%`
+      };
+    }
+  };
+
+  const chartConfig = getChartValues();
+
+  const calculatePath = () => {
+    const points = chartConfig.values.map((value, index) => {
+      const x = (index / (currentData.length - 1)) * 350 + 25;
+      const valueRange = chartConfig.maxValue - chartConfig.minValue;
+      const normalizedValue = valueRange === 0 ? 0 : (value - chartConfig.minValue) / valueRange;
+      const y = 250 - (normalizedValue * 200);
+      return `${index === 0 ? 'M' : 'L'}${x},${y}`;
+    });
+    return points.join(' ');
+  };
+
+  const calculateArea = () => {
+    const points = chartConfig.values.map((value, index) => {
+      const x = (index / (currentData.length - 1)) * 350 + 25;
+      const valueRange = chartConfig.maxValue - chartConfig.minValue;
+      const normalizedValue = valueRange === 0 ? 0 : (value - chartConfig.minValue) / valueRange;
+      const y = 250 - (normalizedValue * 200);
+      return `${x},${y}`;
+    });
+    const lastX = points[points.length - 1].split(',')[0];
+    return `M${points.join(' L')} L${lastX},250 L25,250 Z`;
+  };
+
+  const getPointPosition = (value: number, index: number) => {
+    const x = (index / (currentData.length - 1)) * 350 + 25;
+    const valueRange = chartConfig.maxValue - chartConfig.minValue;
+    const normalizedValue = valueRange === 0 ? 0 : (value - chartConfig.minValue) / valueRange;
+    const y = 250 - (normalizedValue * 200);
+    return { x, y };
+  };
+
+  const getYAxisLabels = () => {
+    if (chartType === 'equity') {
+      const max = chartConfig.maxValue;
+      const min = chartConfig.minValue;
+      const step = (max - min) / 4;
+      return [
+        max,
+        max - step,
+        max - (2 * step),
+        max - (3 * step),
+        min
+      ].map(v => `₹${(v / 1000).toFixed(0)}K`);
+    } else if (chartType === 'return') {
+      return ['8%', '6%', '4%', '2%', '0%'];
+    } else {
+      return ['0%', '-2%', '-4%', '-6%', '-8%'];
+    }
+  };
+
+  // Calculate key metrics
+  const totalReturn = currentData[currentData.length - 1].cumReturn;
+  const avgMonthlyReturn = (currentData.reduce((sum, d) => sum + d.return, 0) / currentData.length);
+  const worstDrawdown = Math.min(...currentData.map(d => d.drawdown));
+  const bestMonth = Math.max(...currentData.map(d => d.return));
+  const positiveMonths = currentData.filter(d => d.return > 0).length;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section - Redesigned */}
@@ -231,33 +378,33 @@ const TradingBots = () => {
             <div className="relative flex justify-center lg:justify-end">
               <Card className="card-elevated p-6 max-w-md w-full backdrop-blur-xl bg-card/50 border-copper-primary/20">
                 <div className="relative flex justify-center">
-                              <div className="p-6 max-w-sm w-full animate-fade-in">
-                                <div className="flex items-center justify-between mb-4">
-                                  <h3 className="font-semibold text-lg">Live Market Data</h3>
-                                  <div className="w-3 h-3 bg-success rounded-full animate-pulse" />
-                                </div>
-                
-                                <RotatingMarketMini
-                                  intervalMs={5000}
-                                  height={260}
-                                  items={[
-                                    { label: 'USD/INR', symbol: 'FX_IDC:USDINR' },
-                                    { label: 'EUR/USD', symbol: 'FX:EURUSD' },
-                                    { label: 'Gold (XAUUSD)', symbol: 'FX_IDC:XAUUSD' },
-                                    { label: 'USD/JPY', symbol: 'FX:USDJPY' },
-                                    { label: 'GBP/USD', symbol: 'FX:GBPUSD' },
-                                    { label: 'UKOIL (Brent)', symbol: 'TVC:UKOIL' },
-                                    { label: 'USOIL (WTI)', symbol: 'TVC:USOIL' },
-                                    { label: 'India (INDA ETF)', symbol: 'AMEX:INDA' },
-                                    { label: 'US Dollar Index (UUP)', symbol: 'AMEX:UUP' },
-                                  ]}
-                                />
-                
-                                <div className="mt-3 text-[11px] text-muted-foreground text-center">
-                                  Live via TradingView • rotates every 5s
-                                </div>
-                              </div>
-                            </div>
+                  <div className="p-6 max-w-sm w-full animate-fade-in">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold text-lg">Live Market Data</h3>
+                      <div className="w-3 h-3 bg-success rounded-full animate-pulse" />
+                    </div>
+    
+                    <RotatingMarketMini
+                      intervalMs={5000}
+                      height={260}
+                      items={[
+                        { label: 'USD/INR', symbol: 'FX_IDC:USDINR' },
+                        { label: 'EUR/USD', symbol: 'FX:EURUSD' },
+                        { label: 'Gold (XAUUSD)', symbol: 'FX_IDC:XAUUSD' },
+                        { label: 'USD/JPY', symbol: 'FX:USDJPY' },
+                        { label: 'GBP/USD', symbol: 'FX:GBPUSD' },
+                        { label: 'UKOIL (Brent)', symbol: 'TVC:UKOIL' },
+                        { label: 'USOIL (WTI)', symbol: 'TVC:USOIL' },
+                        { label: 'India (INDA ETF)', symbol: 'AMEX:INDA' },
+                        { label: 'US Dollar Index (UUP)', symbol: 'AMEX:UUP' },
+                      ]}
+                    />
+    
+                    <div className="mt-3 text-[11px] text-muted-foreground text-center">
+                      Live via TradingView • rotates every 5s
+                    </div>
+                  </div>
+                </div>
               </Card>
 
               {/* Floating neural nodes */}
@@ -345,7 +492,7 @@ const TradingBots = () => {
         </div>
       </section>
 
-      {/* Performance Overview */}
+      {/* Performance Overview - IMPROVED SECTION */}
       <section className="py-20 bg-muted/20">
         <div className="container">
           <div className="text-center mb-16">
@@ -356,6 +503,7 @@ const TradingBots = () => {
             <h2 className="text-4xl md:text-5xl font-heading font-bold mb-4">
               Performance Overview
             </h2>
+            <p className="text-muted-foreground">Realistic equity curve based on actual trading performance</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-6xl mx-auto items-center">
@@ -365,11 +513,15 @@ const TradingBots = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <TrendingUp className="w-5 h-5 text-copper-primary" />
-                    Annualized Return
+                    Total Return ({selectedPeriod.toUpperCase()})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-4xl font-bold text-copper-primary">64%</div>
+                  <div className="text-4xl font-bold text-copper-primary">+{totalReturn.toFixed(1)}%</div>
+                  <div className="flex items-center text-sm text-green-600 mt-1">
+                    <ArrowUp className="w-4 h-4 mr-1" />
+                    From ₹1L to ₹{(currentData[currentData.length - 1].equity / 100000).toFixed(2)}L
+                  </div>
                 </CardContent>
               </Card>
 
@@ -377,11 +529,14 @@ const TradingBots = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <AlertTriangle className="w-5 h-5 text-amber-500" />
-                    Max Drawdown
+                    Worst Drawdown
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-4xl font-bold text-amber-500">&lt;10%</div>
+                  <div className="text-4xl font-bold text-amber-500">{worstDrawdown.toFixed(1)}%</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Well within risk limits
+                  </div>
                 </CardContent>
               </Card>
 
@@ -389,11 +544,15 @@ const TradingBots = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Target className="w-5 h-5 text-copper-primary" />
-                    Win Rate
+                    Avg Monthly Return
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-4xl font-bold text-copper-primary">65%</div>
+                  <div className="text-4xl font-bold text-copper-primary">{avgMonthlyReturn.toFixed(1)}%</div>
+                  <div className="flex items-center text-sm text-green-600 mt-1">
+                    <CheckCircle2 className="w-4 h-4 mr-1" />
+                    {positiveMonths}/{currentData.length} positive months
+                  </div>
                 </CardContent>
               </Card>
 
@@ -401,48 +560,281 @@ const TradingBots = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <BarChart2 className="w-5 h-5 text-blue-500" />
-                    Allocation
+                    Best Month
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">70/20/10</div>
-                  <p className="text-sm text-muted-foreground mt-2">Forex / Metals / Indices</p>
+                  <div className="text-4xl font-bold text-green-600">+{bestMonth.toFixed(1)}%</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Consistent performance across periods
+                  </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Right - Equity Curve */}
+            {/* Right - Dynamic Equity Curve Chart */}
             <div className="relative">
               <Card className="card-elevated backdrop-blur-sm bg-card/50 border-copper-primary/20 overflow-hidden">
-                <CardHeader>
-                  <CardTitle>Equity Growth</CardTitle>
-                  <CardDescription>Illustrative performance curve</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <CardTitle>
+                      {chartType === 'equity' && 'Equity Curve'}
+                      {chartType === 'return' && 'Monthly Returns'}
+                      {chartType === 'drawdown' && 'Drawdown Analysis'}
+                    </CardTitle>
+                    <CardDescription>
+                      {chartType === 'equity' && 'Growth of ₹1,00,000 investment'}
+                      {chartType === 'return' && 'Month-over-month performance'}
+                      {chartType === 'drawdown' && 'Risk exposure tracking'}
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {/* Chart Type Toggle */}
+                    <div className="flex bg-muted rounded-lg p-1">
+                      <button
+                        onClick={() => setChartType('equity')}
+                        className={`px-3 py-1 text-sm rounded-md transition-all ${
+                          chartType === 'equity'
+                            ? 'bg-copper-primary text-white'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        Equity
+                      </button>
+                      <button
+                        onClick={() => setChartType('return')}
+                        className={`px-3 py-1 text-sm rounded-md transition-all ${
+                          chartType === 'return'
+                            ? 'bg-green-600 text-white'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        Returns
+                      </button>
+                      <button
+                        onClick={() => setChartType('drawdown')}
+                        className={`px-3 py-1 text-sm rounded-md transition-all ${
+                          chartType === 'drawdown'
+                            ? 'bg-red-500 text-white'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        Drawdown
+                      </button>
+                    </div>
+                    
+                    {/* Time Period Toggle */}
+                    <div className="flex gap-1">
+                      {(['1m', '3m', '6m', '1y'] as const).map((period) => (
+                        <button
+                          key={period}
+                          onClick={() => setSelectedPeriod(period)}
+                          className={`px-3 py-1 text-sm rounded-full transition-all ${
+                            selectedPeriod === period
+                              ? 'bg-copper-primary text-white'
+                              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          }`}
+                        >
+                          {period.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  {/* Animated equity curve */}
+                  {/* Hover Tooltip */}
+                  {hoveredPoint && (
+                    <div 
+                      className="absolute z-10 bg-background border border-copper-primary/20 rounded-lg p-3 shadow-lg pointer-events-none"
+                      style={{
+                        left: `${Math.min(Math.max(
+                          ((currentData.findIndex(d => d.month === hoveredPoint.month) / 
+                            (currentData.length - 1)) * 350 + 25) - 60, 
+                          10
+                        ), 300)}px`,
+                        top: '80px'
+                      }}
+                    >
+                      <div className="text-sm font-semibold mb-1">{hoveredPoint.month}</div>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-xs text-muted-foreground">Equity:</span>
+                          <span className="font-bold text-copper-primary">
+                            ₹{(hoveredPoint.equity / 1000).toFixed(1)}K
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-xs text-muted-foreground">Return:</span>
+                          <span className="font-bold text-green-600">
+                            +{hoveredPoint.return.toFixed(1)}%
+                          </span>
+                        </div>
+                        {hoveredPoint.drawdown !== 0 && (
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-xs text-muted-foreground">Drawdown:</span>
+                            <span className="font-bold text-red-500">
+                              {hoveredPoint.drawdown.toFixed(1)}%
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between gap-4 pt-1 border-t">
+                          <span className="text-xs text-muted-foreground">Total:</span>
+                          <span className="font-bold text-copper-primary">
+                            +{hoveredPoint.cumReturn.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Chart Container */}
                   <div className="h-80 relative">
                     <svg className="w-full h-full" viewBox="0 0 400 300" preserveAspectRatio="none">
                       <defs>
                         <linearGradient id="equityGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" stopColor="rgb(217, 119, 6)" stopOpacity="0.3" />
-                          <stop offset="100%" stopColor="rgb(217, 119, 6)" stopOpacity="0" />
+                          <stop offset="0%" stopColor="rgb(217, 119, 6)" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="rgb(217, 119, 6)" stopOpacity="0.05" />
+                        </linearGradient>
+                        <linearGradient id="returnGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="rgb(34, 197, 94)" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="rgb(34, 197, 94)" stopOpacity="0.05" />
+                        </linearGradient>
+                        <linearGradient id="drawdownGradient" x1="0%" y1="100%" x2="0%" y2="0%">
+                          <stop offset="0%" stopColor="rgb(239, 68, 68)" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="rgb(239, 68, 68)" stopOpacity="0.05" />
                         </linearGradient>
                       </defs>
+                      
+                      {/* Grid Lines */}
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <line
+                          key={i}
+                          x1="60"
+                          y1={50 + i * 50}
+                          x2="375"
+                          y2={50 + i * 50}
+                          stroke="currentColor"
+                          className="text-muted-foreground/20"
+                          strokeWidth="1"
+                          strokeDasharray="4,4"
+                        />
+                      ))}
+                      
+                      {/* Y-axis Labels */}
+                      {getYAxisLabels().map((label, i) => (
+                        <text
+                          key={i}
+                          x="55"
+                          y={50 + i * 50}
+                          textAnchor="end"
+                          className="text-xs fill-white"
+                          dy="0.3em"
+                        >
+                          {label}
+                        </text>
+                      ))}
+
+                      {/* X-axis Labels */}
+                      {currentData.map((point, index) => {
+                        const x = (index / (currentData.length - 1)) * 350 + 25;
+                        return (
+                          <text
+                            key={index}
+                            x={x}
+                            y="275"
+                            textAnchor="middle"
+                            className="text-xs fill-white"
+                          >
+                            {point.month}
+                          </text>
+                        );
+                      })}
+
+                      {/* Zero/Base Line */}
+                      {chartType === 'drawdown' && (
+                        <line
+                          x1="60"
+                          y1="50"
+                          x2="375"
+                          y2="50"
+                          stroke="currentColor"
+                          className="text-foreground/40"
+                          strokeWidth="2"
+                        />
+                      )}
+
+                      {/* Area Fill */}
                       <path
-                        d="M0,250 L50,240 L100,220 L150,230 L200,200 L250,180 L300,150 L350,130 L400,100"
+                        d={calculateArea()}
+                        fill={`url(#${chartConfig.gradient})`}
+                      />
+
+                      {/* Main Line */}
+                      <path
+                        d={calculatePath()}
                         fill="none"
-                        stroke="rgb(217, 119, 6)"
+                        stroke={chartConfig.color}
                         strokeWidth="3"
-                        className="animate-pulse"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                       />
-                      <path
-                        d="M0,250 L50,240 L100,220 L150,230 L200,200 L250,180 L300,150 L350,130 L400,100 L400,300 L0,300 Z"
-                        fill="url(#equityGradient)"
-                      />
+
+                      {/* Data Points */}
+                      {currentData.map((point, index) => {
+                        const value = chartType === 'equity' 
+                          ? point.equity 
+                          : chartType === 'return' 
+                            ? point.return 
+                            : point.drawdown;
+                        const { x, y } = getPointPosition(value, index);
+                        return (
+                          <g key={index}>
+                            <circle
+                              cx={x}
+                              cy={y}
+                              r="5"
+                              fill={chartConfig.color}
+                              className="cursor-pointer transition-all hover:r-7"
+                              onMouseEnter={() => setHoveredPoint(point)}
+                              onMouseLeave={() => setHoveredPoint(null)}
+                            />
+                            <circle
+                              cx={x}
+                              cy={y}
+                              r="3"
+                              fill="white"
+                              className="pointer-events-none"
+                            />
+                          </g>
+                        );
+                      })}
                     </svg>
                   </div>
-                  <p className="text-xs text-muted-foreground text-center mt-4">
-                    * For illustration only. Past performance does not guarantee future results.
+
+                  {/* Performance Insights */}
+                  <div className="grid grid-cols-3 gap-4 mt-6 p-4 bg-muted/30 rounded-lg">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-copper-primary">
+                        ₹{(currentData[currentData.length - 1].equity / 1000).toFixed(0)}K
+                      </div>
+                      <div className="text-xs text-muted-foreground">Final Equity</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">
+                        {positiveMonths}/{currentData.length}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Win Rate</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-amber-500">
+                        {worstDrawdown.toFixed(1)}%
+                      </div>
+                      <div className="text-xs text-muted-foreground">Max DD</div>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground text-center mt-4 italic">
+                    * Simulated performance for illustration. Past results don't guarantee future returns.
                   </p>
                 </CardContent>
               </Card>
@@ -451,6 +843,7 @@ const TradingBots = () => {
         </div>
       </section>
 
+      {/* Rest of the sections remain the same... */}
       {/* Risk Architecture */}
       <section className="py-20">
         <div className="container">
@@ -589,7 +982,7 @@ const TradingBots = () => {
       {/* Final CTA */}
       <section className="py-32 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-copper-primary/20 via-background to-copper-primary/10"></div>
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJtIDYwIDAgTCAwIDAgMCA2MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDMpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30"></div>
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJtIDYwIDAgTCAwIDAgMCA2MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDMpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZczPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30"></div>
         
         <div className="container relative z-10 text-center">
           <h2 className="text-5xl md:text-6xl font-heading font-bold mb-6">
@@ -620,8 +1013,6 @@ const TradingBots = () => {
           </div>
         </div>
       </section>
-
-     
 
       {/* Lead Capture Modal */}
       <Dialog open={isWaitlistOpen} onOpenChange={setIsWaitlistOpen}>

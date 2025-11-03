@@ -7,8 +7,8 @@ import { Mail, Phone, MapPin, MessageCircle } from "lucide-react";
 const Footer = () => {
   const footerLinks = {
     courses: [
-      { name: "All Courses", href: "/courses" },
-      { name: "Utkarsh Trading Course", href: "/courses/utkarsh" },
+      { name: "All Courses", href: "/education" },
+      { name: "Utkarsh Trading Education", href: "/education/utkarsh" },
       { name: "Mentorship Programs", href: "/mentorship" },
     ],
     services: [
@@ -76,7 +76,7 @@ const Footer = () => {
           {/* Links Sections */}
           <nav className="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-8" aria-label="Footer navigation">
             <div>
-              <h4 className="font-semibold text-copper-primary mb-4">Courses</h4>
+              <h4 className="font-semibold text-copper-primary mb-4">Education</h4>
               <ul className="space-y-3">
                 {footerLinks.courses.map((link) => (
                   <li key={link.name}>
