@@ -17,7 +17,7 @@ const Header = () => {
   ];
 
   const desktopNav = [
-    { name: "Educaton", href: "/education" },
+    { name: "Education", href: "/education" },
     { name: "Services", href: "/services" },
     { name: "Tools", href: "/tools" },
     { name: "Blog", href: "/blog" },
