@@ -258,19 +258,13 @@ export default function UtkarshClient() {
             <CardContent className="p-0">
               {/* Video Placeholder - Replace with actual video embed */}
               <div className="relative aspect-video bg-zinc-950 flex items-center justify-center">
-                <div className={`w-20 h-20 rounded-full ${brandTint} flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-[0_0_60px_rgba(148,113,84,0.4)]`}>
+                {/* <div className={`w-20 h-20 rounded-full ${brandTint} flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-[0_0_60px_rgba(148,113,84,0.4)]`}>
                   <Video className={`w-10 h-10 ${brandDim}`} />
-                </div>
-                {/* 
-                  Replace above placeholder with actual video:
-                  <iframe 
-                    className="w-full h-full"
-                    src="https://www.youtube.com/embed/YOUR_VIDEO_ID"
-                    title="Utkarsh Program Introduction"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                */}
+                </div> */}
+                
+                 
+                 <iframe className="w-full h-full"  src="https://www.youtube.com/embed/sxu_ot94bzg?si=xUhqafAa0a2XXnXN" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+               
               </div>
             </CardContent>
           </Card>
